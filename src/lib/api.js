@@ -28,8 +28,42 @@ const WX_HOURLY = [
   'cloud_cover_high',
   'wind_speed_10m',
   'weather_code',
+  'precipitation',
+  'precipitation_probability',
+  'apparent_temperature',
+  'uv_index',
+  'wind_gusts_10m',
 ];
-const WX_CURRENT = ['temperature_2m', 'relative_humidity_2m', 'wind_speed_10m', 'wind_direction_10m', 'weather_code'];
+const WX_CURRENT = [
+  'temperature_2m',
+  'relative_humidity_2m',
+  'apparent_temperature',
+  'precipitation',
+  'wind_speed_10m',
+  'wind_direction_10m',
+  'wind_gusts_10m',
+  'cloud_cover',
+  'uv_index',
+  'weather_code',
+  'is_day',
+];
+const WX_DAILY = [
+  'weather_code',
+  'temperature_2m_max',
+  'temperature_2m_min',
+  'apparent_temperature_max',
+  'precipitation_sum',
+  'precipitation_probability_max',
+  'precipitation_hours',
+  'wind_speed_10m_max',
+  'wind_gusts_10m_max',
+  'wind_direction_10m_dominant',
+  'uv_index_max',
+  'sunrise',
+  'sunset',
+  'sunshine_duration',
+  'shortwave_radiation_sum',
+];
 
 const cache = new Map();
 
@@ -95,7 +129,36 @@ const WX_MAP = {
   cloud_cover_high: 'cloud_high',
   wind_speed_10m: 'wind',
   weather_code: 'weather_code',
+  precipitation: 'rain',
+  precipitation_probability: 'rain_chance',
+  apparent_temperature: 'feels',
+  uv_index: 'uv',
+  wind_gusts_10m: 'gust',
 };
+
+function zipDaily(json) {
+  const d = json?.daily;
+  if (!d?.time) return [];
+  const pick = (k, i) => d[k]?.[i] ?? null;
+  return d.time.map((t, i) => ({
+    t,
+    weather_code: pick('weather_code', i),
+    tmax: pick('temperature_2m_max', i),
+    tmin: pick('temperature_2m_min', i),
+    feelsMax: pick('apparent_temperature_max', i),
+    rain: pick('precipitation_sum', i),
+    rainChance: pick('precipitation_probability_max', i),
+    rainHours: pick('precipitation_hours', i),
+    windMax: pick('wind_speed_10m_max', i),
+    gustMax: pick('wind_gusts_10m_max', i),
+    windDir: pick('wind_direction_10m_dominant', i),
+    uvMax: pick('uv_index_max', i),
+    sunrise: pick('sunrise', i),
+    sunset: pick('sunset', i),
+    sunshineSec: pick('sunshine_duration', i),
+    radiationMJ: pick('shortwave_radiation_sum', i),
+  }));
+}
 
 function normalize(aq, wx) {
   const aqRows = zipHourly(aq, AQ_MAP);
@@ -119,11 +182,18 @@ function normalize(aq, wx) {
       aod: c.aerosol_optical_depth,
       temp: w.temperature_2m,
       rh: w.relative_humidity_2m,
+      feels: w.apparent_temperature,
+      rain: w.precipitation,
       wind: w.wind_speed_10m,
       windDir: w.wind_direction_10m,
+      gust: w.wind_gusts_10m,
+      cloud: w.cloud_cover,
+      uv: w.uv_index,
+      isDay: w.is_day,
       weather_code: w.weather_code,
     },
     hours,
+    daily: zipDaily(wx),
   };
 }
 
@@ -145,7 +215,7 @@ export async function getPlaceData(place, { startDate, endDate }) {
   try {
     const [aq, wx] = await Promise.all([
       getJson(`${AQ_URL}?${qs({ ...common, hourly: AQ_HOURLY.join(','), current: AQ_CURRENT.join(',') })}`),
-      getJson(`${WX_URL}?${qs({ ...common, hourly: WX_HOURLY.join(','), current: WX_CURRENT.join(',') })}`),
+      getJson(`${WX_URL}?${qs({ ...common, hourly: WX_HOURLY.join(','), current: WX_CURRENT.join(','), daily: WX_DAILY.join(',') })}`),
     ]);
     return { source: 'live', ...normalize(aq, wx) };
   } catch (err) {

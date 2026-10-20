@@ -1,4 +1,4 @@
-# SuriaHaze — air quality + solar haze loss
+# SuriaHaze — solar & weather assistant
 
 An IQAir-style air quality app for Malaysian townships, with one extra feature: it
 calculates how much rooftop solar power the haze is costing each home, and plans
@@ -9,11 +9,15 @@ energy efficiency + climate resilience; People pillar: healthier, safer lives).
 
 ## What's inside
 
+A solar and weather assistant for Malaysian townships. Haze is one of several factors (with
+clouds, heat and dust) that decide how much power a rooftop makes.
+
 | Page | What it shows |
 |---|---|
-| **Air quality** | **Official DOE Air Pollutant Index** from the nearest station, its past 24 hours, DOE health advice, haze level, model forecast (24-hour and 5-day), pollutant estimates, today's/tomorrow's solar haze loss |
-| **Solar haze loss** | Hour-by-hour sunlight with vs without haze, % and kWh lost, day picker (past ~85 days replay real data, next 4 days forecast), satellite reality check for past days, battery & chores plan, editable home settings |
-| **Rankings** | Sime Darby townships or cities ranked by official API or tomorrow's solar loss, all DOE stations ranked, plus township-wide MWh / RM / CO₂ impact |
+| **Air quality** | IQAir US AQI + official DOE API, DOE health advice, past 24 h, model forecast, 3D haze view, today's/tomorrow's solar output |
+| **Weather** | Now (temperature, feels-like, heat index, dew point, UV, wind, rain, cloud), heat warnings, next-24-hour chart, 7-day forecast with solar output per day |
+| **Solar forecast** | Output in kWh for each of 7 days, **where the solar goes** (ideal → inverter & wiring → heat → clouds & rain → haze → dust → output), hour-by-hour sunlight with/without haze, 3D view, battery & chores plan |
+| **Rankings** | Townships/cities by DOE API, IQAir or tomorrow's solar output; all DOE stations; township-wide impact |
 | **How it works** | The method, which model is live, data sources, honest limits |
 
 No paid services. Data sources:
@@ -68,6 +72,20 @@ npm run dev        # http://localhost:5173
 npm test           # core model tests
 ```
 
+## Weather calculations (`src/lib/weather.js`)
+
+- Heat index: NOAA (Rothfusz) from temperature and humidity; heat-stress bands from NOAA.
+- Dew point: Magnus formula. UV: WHO categories. Rain: daily totals (light < 10 mm, heavy ≥ 30 mm).
+
+## Solar loss breakdown (`src/lib/losses.js`)
+
+Each step is the difference between two full model runs, so the steps add up exactly and the haze
+step equals the haze figure shown everywhere else:
+
+ideal (perfect, cool panel, clear sky) − inverter & wiring (~14%) − heat (−0.4%/°C above 25 °C) −
+clouds & rain − haze − dust on panels (estimate: ~1% after rain + 0.4%/dry day + 0.5% on smoky days,
+max 6%) = forecast output.
+
 ## The model
 
 1. **Physics:** sun position (NOAA equations) → clear-sky sunlight (Haurwitz).
@@ -116,6 +134,8 @@ src/lib/battery.js    battery & chores planner
 src/lib/api.js        Open-Meteo calls, data shaping
 src/lib/demo.js       offline simulated haze week
 src/lib/doe.js        official DOE readings: parsing, bands, nearest station
+src/lib/weather.js    heat index, dew point, UV / rain / heat levels
+src/lib/losses.js     solar loss breakdown and dust (soiling) estimate
 api/doe.js            Vercel server function that fetches the DOE feed
 api/iqair.js          Vercel server function that calls IQAir with your secret key
 api/places.js         Vercel server function: IQAir's country → region → city directory

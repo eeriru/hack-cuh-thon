@@ -1,44 +1,38 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getManyPlaces, addDays, todayMY, dayModelHours } from '../lib/api.js';
 import { computeHazeLoss } from '../lib/model.js';
+import { lossBreakdown, soilingForDate } from '../lib/losses.js';
 import { DEFAULT_SYSTEM } from '../lib/solar.js';
 import { aqiLevel } from '../lib/aqi.js';
-import { getIqair } from '../lib/iqair.js';
+import { getIqair, iqairPausedUntil } from '../lib/iqair.js';
 import { tryDoeStations, nearestStation, doeLevel, DOE_SYMBOLS, DOE_SOURCE_URL } from '../lib/doe.js';
 import { TOWNSHIPS, CITIES } from '../lib/places.js';
 import { useAsync, Loading, DemoBanner, fmtTime } from './common.jsx';
 
-// IQAir's free plan allows 5 lookups a minute, so readings are fetched one at a time,
-// about every 13 seconds, and fill in as they arrive. Vercel caches each one for 15
-// minutes, so once loaded they come back instantly for every visitor.
+// IQAir's free plan allows 5 lookups a minute. Readings go through the shared queue in
+// lib/iqair.js (spaced out, paused when IQAir is busy, remembered for 30 minutes) and
+// fill in as they arrive. Nearby townships share one reading.
 function useIqairQueue(places, active) {
   const [results, setResults] = useState({});
+  const [pausedUntil, setPausedUntil] = useState(0);
   useEffect(() => {
     if (!active) return undefined;
     let cancelled = false;
-    let timer = 0;
-    const queue = [...places];
-    const next = (delayMs) => {
-      timer = setTimeout(async () => {
-        const p = queue[0];
-        if (!p || cancelled) return;
-        const started = Date.now();
-        const r = await getIqair(p);
+    const tick = setInterval(() => setPausedUntil(iqairPausedUntil()), 1000);
+    (async () => {
+      for (const p of places) {
+        const r = await getIqair(p, { background: true });
         if (cancelled) return;
-        if (r.error && /limit/i.test(r.error)) return next(60000); // wait out the per-minute limit, then retry
-        queue.shift();
         setResults((m) => ({ ...m, [p.name]: r }));
-        // A quick answer came from cache, so the next one can go straight away
-        next(Date.now() - started < 400 ? 0 : 13000);
-      }, delayMs);
-    };
-    next(0);
+        if (r.notConfigured) return; // no key on the server: stop asking
+      }
+    })();
     return () => {
       cancelled = true;
-      clearTimeout(timer);
+      clearInterval(tick);
     };
   }, [places, active]);
-  return results;
+  return { results, pausedUntil };
 }
 
 export default function RankingsPage({ engine, settings, onPick }) {
@@ -49,7 +43,7 @@ export default function RankingsPage({ engine, settings, onPick }) {
   const tomorrow = addDays(today, 1);
   const places = group === 'cities' ? CITIES : TOWNSHIPS;
   const doe = useAsync(() => tryDoeStations(), [today]);
-  const iqResults = useIqairQueue(places, group !== 'stations');
+  const { results: iqResults, pausedUntil: iqPausedUntil } = useIqairQueue(places, group !== 'stations');
   const { data, loading } = useAsync(
     () => (group === 'stations' ? Promise.resolve([]) : getManyPlaces(places, { startDate: today, endDate: tomorrow })),
     [group, today]
@@ -60,6 +54,7 @@ export default function RankingsPage({ engine, settings, onPick }) {
     const system = { ...DEFAULT_SYSTEM, kwp: settings.kwp };
     const list = data.map((d) => {
       const loss = computeHazeLoss(dayModelHours(d, tomorrow), { ...d.place, engine, system });
+      const output = lossBreakdown(loss, { system, soilingPct: soilingForDate(d, tomorrow).pct }).final;
       const near = doe.data ? nearestStation(doe.data, d.place) : null;
       const iq = iqResults[d.place.name];
       return {
@@ -67,8 +62,9 @@ export default function RankingsPage({ engine, settings, onPick }) {
         official: near,
         api: near?.station.latest.api ?? null,
         iq: iq && !iq.error ? iq : null,
-        iqState: iq ? (iq.error ? 'error' : 'ok') : 'waiting',
+        iqState: iq ? (iq.error ? (iq.limited ? 'busy' : 'error') : 'ok') : 'waiting',
         loss,
+        output,
         source: d.source,
       };
     });
@@ -76,6 +72,7 @@ export default function RankingsPage({ engine, settings, onPick }) {
       doe: (r) => r.api ?? -1,
       iqair: (r) => r.iq?.aqius ?? -1,
       loss: (r) => r.loss.lossPct,
+      output: (r) => r.output,
     }[sortBy];
     list.sort((a, b) => key(b) - key(a));
     return list;
@@ -109,7 +106,7 @@ export default function RankingsPage({ engine, settings, onPick }) {
       )}
       <div className="place-title">
         <h1>Rankings</h1>
-        <span className="sub">Air quality now from IQAir and the DOE, and how much solar the haze will take tomorrow</span>
+        <span className="sub">Air quality now from IQAir and the DOE, and tomorrow's solar output and haze loss</span>
       </div>
       <div className="spread section">
         <div className="chips">
@@ -122,7 +119,8 @@ export default function RankingsPage({ engine, settings, onPick }) {
             <span className="small muted" style={{ alignSelf: 'center' }}>Sort by</span>
             <button className={`chip ${sortBy === 'doe' ? 'active' : ''}`} onClick={() => setSortBy('doe')}>DOE API</button>
             <button className={`chip ${sortBy === 'iqair' ? 'active' : ''}`} onClick={() => setSortBy('iqair')}>IQAir</button>
-            <button className={`chip ${sortBy === 'loss' ? 'active' : ''}`} onClick={() => setSortBy('loss')}>Solar loss</button>
+            <button className={`chip ${sortBy === 'output' ? 'active' : ''}`} onClick={() => setSortBy('output')}>Solar output</button>
+            <button className={`chip ${sortBy === 'loss' ? 'active' : ''}`} onClick={() => setSortBy('loss')}>Haze loss</button>
           </div>
         )}
       </div>
@@ -142,7 +140,8 @@ export default function RankingsPage({ engine, settings, onPick }) {
                     <th>{group === 'townships' ? 'Township' : 'City'}</th>
                     <th>DOE API (official)</th>
                     <th>IQAir US AQI</th>
-                    <th style={{ minWidth: 180 }}>Solar lost tomorrow ({settings.kwp} kW)</th>
+                    <th>Solar tomorrow</th>
+                    <th style={{ minWidth: 170 }}>Lost to haze ({settings.kwp} kW)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -177,8 +176,13 @@ export default function RankingsPage({ engine, settings, onPick }) {
                               </div>
                             </>
                           ) : (
-                            <span className="small muted">{r.iqState === 'waiting' ? 'Loading…' : 'Unavailable'}</span>
+                            <span className="small muted">
+                              {r.iqState === 'waiting' ? 'Waiting for IQAir…' : r.iqState === 'busy' ? 'IQAir busy' : 'Unavailable'}
+                            </span>
                           )}
+                        </td>
+                        <td>
+                          <b>{r.output.toFixed(1)}</b> <span className="small muted">kWh</span>
                         </td>
                         <td>
                           <div className="lossbar">
@@ -197,8 +201,12 @@ export default function RankingsPage({ engine, settings, onPick }) {
             </div>
             <p className="small muted" style={{ margin: '10px 0 0' }}>
               DOE: latest hourly reading from the nearest official station. IQAir: nearest IQAir city
-              {iqDone < rows.length ? ` (loading ${iqDone}/${rows.length}; IQAir's free plan allows 5 lookups a minute)` : ''}. Solar
-              loss: haze and sunlight forecast model.
+              {iqDone < rows.length
+                ? ` (${iqDone}/${rows.length} loaded${
+                    iqPausedUntil ? `, IQAir is busy, resuming in ${Math.max(1, Math.ceil((iqPausedUntil - Date.now()) / 1000))} s` : ''
+                  }; the free plan allows 5 lookups a minute, so the rest fill in over the next few minutes)`
+                : ''}
+              . Solar: weather, haze and sunlight forecast model (output after clouds, heat, haze and dust).
             </p>
           </div>
 

@@ -6,8 +6,12 @@
 //   Project → Settings → Environment Variables → IQAIR_API_KEY = <your key>  → redeploy.
 // The key never reaches the browser.
 //
-// The free plan allows 5 calls a minute and 500 a day, so coordinates are rounded to
-// ~1 km and each answer is cached at Vercel's edge for 15 minutes (IQAir updates hourly).
+// The free plan allows 5 calls a minute and 500 a day. To stay inside it:
+//  - coordinates are rounded to 0.05° (~5 km), so nearby townships share one cached answer
+//    (IQAir returns the nearest city anyway);
+//  - each answer is cached at Vercel's edge for 30 minutes (IQAir updates hourly);
+//  - when IQAir says "too many requests", that answer is cached for 60 seconds so other
+//    visitors wait instead of hitting IQAir again.
 
 const BASE = 'https://api.airvisual.com/v2/nearest_city';
 
@@ -36,22 +40,28 @@ export default async function handler(req, res) {
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
     return res.status(400).json({ error: 'lat and lon are required' });
   }
-  const url = `${BASE}?lat=${lat.toFixed(2)}&lon=${lon.toFixed(2)}&key=${encodeURIComponent(key)}`;
+  const round = (x) => (Math.round(x * 20) / 20).toFixed(2);
+  const url = `${BASE}?lat=${round(lat)}&lon=${round(lon)}&key=${encodeURIComponent(key)}`;
   try {
     const r = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(12000) });
     const json = await r.json().catch(() => null);
     if (!json || json.status !== 'success') {
-      const code = json?.data?.message || `HTTP ${r.status}`;
-      res.setHeader('Cache-Control', 'no-store');
-      return res.status(code === 'too_many_requests' || code === 'call_limit_reached' ? 429 : 502).json({
-        error: MESSAGES[code] || `IQAir error: ${code}`,
-        code,
-      });
+      // IQAir sends codes like "call_limit_reached" but also plain text like "Too Many Requests"
+      const raw = String(json?.data?.message || (r.status === 429 ? 'too_many_requests' : `HTTP ${r.status}`));
+      const code = raw.trim().toLowerCase().replace(/[\s-]+/g, '_');
+      const limited = code === 'too_many_requests' || code === 'call_limit_reached' || r.status === 429;
+      if (limited) {
+        res.setHeader('Retry-After', '60');
+        res.setHeader('Cache-Control', 's-maxage=60');
+      } else {
+        res.setHeader('Cache-Control', 'no-store');
+      }
+      return res.status(limited ? 429 : 502).json({ error: MESSAGES[code] || `IQAir error: ${raw}`, code, limited });
     }
     const d = json.data;
     const p = d.current?.pollution || {};
     const w = d.current?.weather || {};
-    res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=1800');
+    res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=3600');
     return res.status(200).json({
       city: d.city,
       state: d.state,

@@ -1,17 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getPlaceData, getSatelliteGhi, addDays, todayMY, dayModelHours, availableDates } from '../lib/api.js';
 import { computeHazeLoss } from '../lib/model.js';
 import { DEFAULT_SYSTEM } from '../lib/solar.js';
 import { planDay, hourRanges, fmtHour } from '../lib/battery.js';
 import { hazeLevel } from '../lib/aqi.js';
 import { SolarChart, SocChart } from './charts.jsx';
+import LossBreakdown from './LossBreakdown.jsx';
+import { lossBreakdown, soilingForDate } from '../lib/losses.js';
+import { rainByDate, weatherIcon, WEATHER_TEXT } from '../lib/weather.js';
 import HazeScene3D from './HazeScene3D.jsx';
 import AirNow from './AirNow.jsx';
 import { TOWNSHIPS } from '../lib/places.js';
 import { useAsync, Loading, DemoBanner, fmtDate } from './common.jsx';
 
 const MAX_PAST = 85;
-const MAX_AHEAD = 4;
+const MAX_AHEAD = 6; // a 7-day solar forecast (today + 6)
 
 export default function SolarPage({ place, engine, settings, setSettings, go }) {
   const today = todayMY();
@@ -23,7 +26,7 @@ export default function SolarPage({ place, engine, settings, setSettings, go }) 
   }, [place.lat, place.lon, today]);
 
   const startDate = addDays(anchor, -5) < addDays(today, -MAX_PAST) ? addDays(today, -MAX_PAST) : addDays(anchor, -5);
-  const endDate = addDays(anchor, 4) > addDays(today, MAX_AHEAD) ? addDays(today, MAX_AHEAD) : addDays(anchor, 4);
+  const endDate = addDays(anchor, 6) > addDays(today, MAX_AHEAD) ? addDays(today, MAX_AHEAD) : addDays(anchor, 6);
 
   const { data, loading } = useAsync(() => getPlaceData(place, { startDate, endDate }), [place.lat, place.lon, startDate, endDate]);
   const sat = useAsync(
@@ -45,7 +48,28 @@ export default function SolarPage({ place, engine, settings, setSettings, go }) 
     if (!data || !engine) return [];
     return availableDates(data)
       .filter((d) => d >= startDate && d <= endDate)
-      .map((d) => ({ d, loss: computeHazeLoss(dayModelHours(data, d), { ...place, engine, system }) }))
+      .map((d) => {
+        const loss = computeHazeLoss(dayModelHours(data, d), { ...place, engine, system });
+        const soil = soilingForDate(data, d);
+        const breakdown = lossBreakdown(loss, { system, soilingPct: soil.pct });
+        const daily = (data.daily || []).find((x) => new Date((x.t + data.offsetSec) * 1000).toISOString().slice(0, 10) === d);
+        const dayHours = data.hours.filter((h) => new Date((h.t - 1 + data.offsetSec) * 1000).toISOString().slice(0, 10) === d);
+        const temps = dayHours.map((h) => h.temp).filter((x) => x !== null && x !== undefined);
+        const hazeForecast = loss.rows.some((r) => r.clearGhi > 50 && r.aod !== null && r.aod !== undefined);
+        return {
+          d,
+          loss,
+          soil,
+          breakdown,
+          hazeForecast,
+          wx: {
+            code: daily?.weather_code ?? null,
+            rain: daily?.rain ?? rainByDate(dayHours, data.offsetSec).get(d) ?? null,
+            rainChance: daily?.rainChance ?? null,
+            tmax: daily?.tmax ?? (temps.length ? Math.max(...temps) : null),
+          },
+        };
+      })
       .filter((x) => x.loss.rows.length >= 20);
   }, [data, engine, place, system, startDate, endDate]);
 
@@ -62,14 +86,41 @@ export default function SolarPage({ place, engine, settings, setSettings, go }) 
     if (el && barRef.current) barRef.current.scrollLeft = el.offsetLeft - barRef.current.offsetLeft - 40;
   }, [current?.d, days.length]);
 
+  // Same calculation as the headline, for the 3D scene's haze slider: scale every hour's haze
+  // so the day's average matches the slider, and rerun the solar model. At today's level it
+  // returns exactly the headline figure.
+  const shareForAod = useCallback(
+    (aod) => {
+      if (!current || !engine) return 1;
+      const L0 = current.loss;
+      if (L0.meanAod > 0 && Math.abs(aod - L0.meanAod) < 1e-6) return L0.kwhClean > 0 ? L0.kwhHaze / L0.kwhClean : 1;
+      const k = L0.meanAod > 0 ? aod / L0.meanAod : 1;
+      const hours = L0.rows.map((r) => ({
+        t: r.t,
+        localHour: r.localHour,
+        aod: r.aod === null || r.aod === undefined ? null : r.aod * k,
+        pm2_5: r.pm2_5 === null || r.pm2_5 === undefined ? null : r.pm2_5 * k,
+        cloud_low: r.cloud_low,
+        cloud_mid: r.cloud_mid,
+        cloud_high: r.cloud_high,
+        rh: r.rh,
+        temp: r.temp,
+      }));
+      const L1 = computeHazeLoss(hours, { ...place, engine, system });
+      return L1.kwhClean > 0 ? L1.kwhHaze / L1.kwhClean : 1;
+    },
+    [current, engine, place, system]
+  );
+
   const plan = useMemo(() => {
     if (!current) return null;
     const pv = new Array(24).fill(0);
     const pvClean = new Array(24).fill(0);
     const pm = new Array(24).fill(0);
+    const keep = 1 - current.soil.pct / 100; // dust on the panels
     current.loss.rows.forEach((r) => {
-      pv[r.localHour] = r.kwhHaze;
-      pvClean[r.localHour] = r.kwhClean;
+      pv[r.localHour] = r.kwhHaze * keep;
+      pvClean[r.localHour] = r.kwhClean * keep;
       pm[r.localHour] = r.pm2_5 ?? 0;
     });
     const p = planDay(pv, pm, dayHome);
@@ -96,16 +147,19 @@ export default function SolarPage({ place, engine, settings, setSettings, go }) 
   if (!current) return <div className="card section">No data for this date. Try another date.</div>;
 
   const L = current.loss;
+  const B = current.breakdown;
   const haze = hazeLevel(L.meanAod);
   const dayWord = current.d === today ? 'today' : current.d === addDays(today, 1) ? 'tomorrow' : `on ${fmtDate(current.d)}`;
   const isPast = current.d < today;
-  const maxLoss = Math.max(5, ...days.map((x) => x.loss.lossPct));
+  const maxOut = Math.max(1, ...days.map((x) => x.breakdown.final));
+  const t = dayHome.tariff;
+  const avgRate = t.mode === 'flat' ? t.flatRate : (t.peakRate + t.offPeakRate) / 2;
 
   return (
     <>
       <DemoBanner source={data.source} />
       <div className="place-title">
-        <h1>Solar haze loss</h1>
+        <h1>Solar forecast</h1>
         <span className="sub">
           {place.name} · {settings.kwp} kW rooftop · {engine.kind === 'trained' ? 'trained AI model' : 'physics baseline model'}
         </span>
@@ -117,41 +171,42 @@ export default function SolarPage({ place, engine, settings, setSettings, go }) 
         <div>
           <div className="eyebrow">{isPast ? 'Replay' : 'Forecast'} · {fmtDate(current.d, { weekday: 'long', day: 'numeric', month: 'long' })}</div>
           <h2>
-            {L.lossPct < 1 ? (
-              <>Haze is barely touching your solar {dayWord}.</>
-            ) : (
-              <>
-                Haze {isPast ? 'cut' : 'will cut'} your solar by <em>{L.lossPct.toFixed(0)}%</em> {dayWord}.
-              </>
-            )}
+            Your panels {isPast ? 'made' : 'will make'} <em>{B.final.toFixed(1)} kWh</em> {dayWord}.
           </h2>
           <p>
-            {haze.label} (aerosol optical depth {L.meanAod.toFixed(2)}, PM2.5 {Math.round(L.meanPm25)} µg/m³) during daylight.
-            Without haze the panels {isPast ? 'would have made' : 'would make'} {L.kwhClean.toFixed(1)} kWh; with it,{' '}
-            {L.kwhHaze.toFixed(1)} kWh.
+            That is {B.performancePct.toFixed(0)}% of the ideal {B.ideal.toFixed(1)} kWh. Biggest loss after equipment:{' '}
+            <b style={{ color: 'var(--paper)' }}>{B.biggest.label.toLowerCase()}</b> ({Math.max(0, B.biggest.kwh).toFixed(1)} kWh).{' '}
+            {L.lossPct >= 1
+              ? `${haze.label} ${isPast ? 'cut' : 'cuts'} output by ${L.lossPct.toFixed(0)}% (AOD ${L.meanAod.toFixed(2)}).`
+              : 'Haze is barely a factor.'}{' '}
+            Worth about RM {(B.final * avgRate).toFixed(2)} of electricity.
           </p>
         </div>
         <div className="headline-stats">
           <div className="hs">
-            <div className="k">Energy lost to haze</div>
-            <div className="v">
-              {L.lossKwh.toFixed(1)}
-              <small>kWh</small>
-            </div>
-          </div>
-          <div className="hs">
             <div className="k">Solar output</div>
             <div className="v">
-              {L.kwhHaze.toFixed(1)}
+              {B.final.toFixed(1)}
               <small>kWh</small>
             </div>
           </div>
           <div className="hs">
-            <div className="k">Value of lost solar</div>
+            <div className="k">Lost to haze</div>
             <div className="v">
-              RM {plan ? plan.lossValueRm.toFixed(2) : '–'}
+              {L.lossKwh.toFixed(1)}
+              <small>kWh · {L.lossPct.toFixed(0)}%</small>
             </div>
             {plan && <div className="k">Your bill: +RM {plan.hazeCostRm.toFixed(2)}</div>}
+          </div>
+          <div className="hs">
+            <div className="k">Weather</div>
+            <div className="v" style={{ fontSize: 18 }}>
+              {weatherIcon(current.wx.code)} {WEATHER_TEXT[current.wx.code] || '—'}
+            </div>
+            <div className="k">
+              {current.wx.tmax !== null ? `${Math.round(current.wx.tmax)}°C max` : ''}
+              {current.wx.rain !== null ? ` · ${current.wx.rain.toFixed(1)} mm rain` : ''}
+            </div>
           </div>
           <div className="hs">
             <div className="k">Cloud cover (daylight)</div>
@@ -164,6 +219,19 @@ export default function SolarPage({ place, engine, settings, setSettings, go }) 
       </section>
 
       <div className="card section">
+        <h2>Where your solar goes</h2>
+        <p className="lede">
+          From the ideal output of a {settings.kwp} kW system to what it {isPast ? 'made' : 'will make'} {dayWord}. Hover a row for how it is calculated.
+        </p>
+        <LossBreakdown breakdown={B} soil={current.soil} />
+        {!current.hazeForecast && (
+          <p className="small muted" style={{ marginTop: 10 }}>
+            No haze forecast this far ahead, so normal haze is assumed for this day.
+          </p>
+        )}
+      </div>
+
+      <div className="card section">
         <h2>See the haze over your roof</h2>
         <p className="lede">
           A 3D view of terrace homes at {isPast ? 'the' : "the forecast"} haze level for {fmtDate(current.d)}. Drag to look around, or move the
@@ -171,6 +239,7 @@ export default function SolarPage({ place, engine, settings, setSettings, go }) 
         </p>
         <HazeScene3D
           aod={L.meanAod}
+          shareForAod={shareForAod}
           label={`${fmtDate(current.d)} · ${place.name}`}
           signTitle={TOWNSHIPS.some((t) => t.name === place.name) ? place.name : null}
         />
@@ -179,11 +248,11 @@ export default function SolarPage({ place, engine, settings, setSettings, go }) 
       <div className="card section">
         <div className="spread">
           <div>
-            <h2>Pick a day</h2>
-            <p className="lede">Bar = share of solar lost to haze. Past days replay real readings; future days use the forecast.</p>
+            <h2>7-day solar forecast</h2>
+            <p className="lede">Bar = expected output. Past days replay real readings; future days use the weather and haze forecast.</p>
           </div>
           <label className="field" style={{ minWidth: 190 }}>
-            <label htmlFor="jump">Jump to a past date</label>
+            <label htmlFor="jump">Jump to a date</label>
             <input
               id="jump"
               type="date"
@@ -199,14 +268,20 @@ export default function SolarPage({ place, engine, settings, setSettings, go }) 
           </label>
         </div>
         <div className="datebar" role="tablist" ref={barRef}>
-          {days.map(({ d, loss }) => (
+          {days.map(({ d, loss, breakdown, wx }) => (
             <button key={d} role="tab" aria-selected={d === current.d} className={`datebtn ${d === current.d ? 'active' : ''}`} onClick={() => setSelected(d)}>
-              <div className="d">{d === today ? 'Today' : fmtDate(d)}</div>
+              <div className="d">
+                {d === today ? 'Today' : fmtDate(d)} <span aria-hidden="true">{weatherIcon(wx.code)}</span>
+              </div>
               <div className="bar">
-                <i style={{ width: `${(loss.lossPct / maxLoss) * 100}%` }} />
+                <i style={{ width: `${(breakdown.final / maxOut) * 100}%`, background: 'var(--sun)' }} />
               </div>
               <div className="p">
-                −{loss.lossPct.toFixed(0)}%<small> {loss.lossKwh.toFixed(1)} kWh</small>
+                {breakdown.final.toFixed(1)}
+                <small> kWh</small>
+              </div>
+              <div className="small muted">
+                haze −{loss.lossPct.toFixed(0)}%{wx.rain ? ` · ${wx.rain.toFixed(0)} mm` : ''}
               </div>
             </button>
           ))}

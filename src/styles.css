@@ -327,3 +327,53 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-
   .scene3d-readout .v { font-size: 18px; }
   .scene3d-readout .v small { font-size: 11.5px; }
 }
+
+/* ---------- loss breakdown (waterfall) ---------- */
+.waterfall { display: grid; gap: 8px; }
+.wf-row { display: grid; grid-template-columns: minmax(150px, 230px) 1fr 92px; gap: 14px; align-items: center; }
+.wf-label b { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.wf-label small { display: block; color: var(--ink-3); font-size: 11.5px; line-height: 1.3; }
+.wf-dot { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+.wf-track { position: relative; height: 22px; background: var(--paper); border-radius: 6px; }
+.wf-track i { position: absolute; top: 0; bottom: 0; border-radius: 6px; }
+.wf-val { text-align: right; }
+.wf-val b { display: block; font-family: var(--font-display); font-size: 15px; }
+.wf-val small { color: var(--ink-3); font-size: 11.5px; }
+.wf-row.total .wf-label b { font-size: 15px; }
+.wf-row.final { border-top: 1px dashed var(--line); padding-top: 8px; }
+.wf-row.final .wf-val b { color: var(--sun-deep); font-size: 18px; }
+@media (max-width: 600px) {
+  .wf-row { grid-template-columns: 1fr 96px; gap: 4px 10px; }
+  .wf-track { grid-column: 1 / -1; grid-row: 2; height: 14px; }
+  .wf-label small { display: none; }
+}
+
+/* ---------- weather page ---------- */
+.wx-hero { display: grid; grid-template-columns: 1fr 1.4fr; gap: 0; border-radius: 24px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow); background: var(--card); }
+@media (max-width: 760px) { .wx-hero { grid-template-columns: 1fr; } }
+.wx-now { padding: 26px; background: linear-gradient(160deg, #3d6fb0, #6aa0d8); color: #fff; display: flex; flex-direction: column; gap: 6px; }
+.wx-now.night { background: linear-gradient(160deg, #1d2433, #39456a); }
+.wx-now.rain { background: linear-gradient(160deg, #4a5a70, #7f93ab); }
+.wx-now.haze { background: linear-gradient(160deg, #8a7a5c, #c2b08a); }
+.wx-now .label { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85; }
+.wx-now .temp { font-family: var(--font-display); font-size: clamp(60px, 9vw, 86px); font-weight: 800; line-height: 0.95; letter-spacing: -0.04em; }
+.wx-now .temp small { font-size: 0.4em; vertical-align: top; margin-left: 2px; }
+.wx-now .cond { font-family: var(--font-display); font-size: 22px; font-weight: 700; }
+.wx-now .feels { opacity: 0.9; font-size: 14px; }
+.wx-stats { padding: 20px 24px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 18px; align-content: center; }
+@media (max-width: 560px) { .wx-stats { grid-template-columns: repeat(2, 1fr); } }
+.wx-days { display: grid; grid-template-columns: repeat(7, minmax(120px, 1fr)); gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.wx-day { border: 1px solid var(--line); border-radius: 14px; padding: 12px; background: var(--card); min-width: 120px; }
+.wx-day .d { font-weight: 800; font-size: 13px; }
+.wx-day .ic { font-size: 28px; margin: 4px 0; }
+.wx-day .t { font-family: var(--font-display); font-weight: 800; font-size: 18px; }
+.wx-day .t small { color: var(--ink-3); font-weight: 600; font-size: 13px; }
+.wx-day .r { font-size: 12.5px; color: var(--ink-2); line-height: 1.45; }
+.wx-day .solar { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); font-size: 12.5px; font-weight: 700; color: var(--sun-deep); }
+.tone-good { color: var(--good); }
+.tone-moderate { color: #9a7400; }
+.tone-bad { color: #c2571a; }
+.tone-worse { color: #b42318; }
+.tone-muted { color: var(--ink-3); }
+.risk-card { border-left: 5px solid var(--sun); border-radius: 0; padding-left: 14px; }
+.brand-tag { display: block; font-family: var(--font-body); font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin-top: -2px; }

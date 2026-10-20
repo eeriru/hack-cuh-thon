@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { getPlaceData, addDays, todayMY, dayModelHours } from '../lib/api.js';
 import { aqiLevel, AQI_LEVELS, ADVICE } from '../lib/aqi.js';
 import { computeHazeLoss } from '../lib/model.js';
+import { lossBreakdown, soilingForDate } from '../lib/losses.js';
 import { tryDoeStations, nearestStation, doeLevel, DOE_LEVELS, DOE_ADVICE, DOE_SYMBOLS, DOE_SOURCE_URL } from '../lib/doe.js';
 import { getIqair, IQAIR_POLLUTANTS, IQAIR_URL, IQAIR_CONDITIONS } from '../lib/iqair.js';
 import { AqiBars } from './charts.jsx';
@@ -62,14 +63,15 @@ export default function AirQualityPage({ place, engine, go }) {
   const iq = useAsync(() => getIqair(place), [place.lat, place.lon]);
   const official = useMemo(() => (doe.data ? nearestStation(doe.data, place) : null), [doe.data, place]);
   // Only the solar card below uses the haze/sunlight model data; it loads separately.
-  const solarData = useAsync(() => getPlaceData(place, { startDate: today, endDate: addDays(today, 1) }), [place.lat, place.lon, today]);
+  const solarData = useAsync(() => getPlaceData(place, { startDate: addDays(today, -3), endDate: addDays(today, 1) }), [place.lat, place.lon, today]);
   const solar = useMemo(() => {
     if (!solarData.data || !engine) return null;
-    return {
-      source: solarData.data.source,
-      today: computeHazeLoss(dayModelHours(solarData.data, today), { ...place, engine }),
-      tomorrow: computeHazeLoss(dayModelHours(solarData.data, addDays(today, 1)), { ...place, engine }),
+    const day = (d) => {
+      const L = computeHazeLoss(dayModelHours(solarData.data, d), { ...place, engine });
+      if (!L.rows.length) return null;
+      return { ...L, output: lossBreakdown(L, { soilingPct: soilingForDate(solarData.data, d).pct }).final };
     };
+    return { source: solarData.data.source, today: day(today), tomorrow: day(addDays(today, 1)) };
   }, [solarData.data, engine, place, today]);
 
   if (doe.loading || iq.loading) return <Loading text="Loading IQAir and DOE readings…" />;
@@ -307,10 +309,10 @@ export default function AirQualityPage({ place, engine, go }) {
 function SolarTeaser({ solar, loading, go }) {
   const t = solar?.today;
   const m = solar?.tomorrow;
-  const fmt = (x) => (x && x.rows.length ? `−${x.lossPct.toFixed(0)}%` : '–');
+  const fmt = (x) => (x ? x.output.toFixed(1) : '–');
   return (
     <div className="card" style={{ background: 'var(--ink)', color: 'var(--paper)', borderColor: 'var(--ink)' }}>
-      <h2 style={{ color: 'var(--paper)' }}>☀ Solar haze loss</h2>
+      <h2 style={{ color: 'var(--paper)' }}>☀ Solar forecast</h2>
       <p className="lede" style={{ color: '#c7bfae' }}>
         For a 5 kW rooftop system here. Uses satellite haze, cloud and sunlight data.
         {solar?.source === 'demo' ? ' Simulated (live data unreachable).' : ''}
@@ -320,22 +322,22 @@ function SolarTeaser({ solar, loading, go }) {
           <div className="k">Today</div>
           <div className="v">
             {loading ? '…' : fmt(t)}
-            <small>{t && t.rows.length ? `${t.lossKwh.toFixed(1)} kWh lost` : ''}</small>
+            <small>{t ? ` kWh · haze −${t.lossPct.toFixed(0)}%` : ''}</small>
           </div>
         </div>
         <div className="hs">
           <div className="k">Tomorrow</div>
           <div className="v">
             {loading ? '…' : fmt(m)}
-            <small>{m && m.rows.length ? `${m.lossKwh.toFixed(1)} kWh lost` : ''}</small>
+            <small>{m ? ` kWh · haze −${m.lossPct.toFixed(0)}%` : ''}</small>
           </div>
         </div>
       </div>
       <p style={{ color: '#d8d1c2', fontSize: 13.5 }}>
-        Haze blocks sunlight before it reaches your panels. See the hour-by-hour loss and a battery plan that works around it.
+        Expected output after clouds, heat, haze and dust. See where your solar goes, the 7-day forecast and a battery plan.
       </p>
       <button className="btn" style={{ background: 'var(--sun)', borderColor: 'var(--sun)', color: 'var(--ink)' }} onClick={() => go('solar')}>
-        Open solar planner →
+        Open solar forecast →
       </button>
     </div>
   );

@@ -148,6 +148,9 @@ export default function HazeScene3D({
   signTitle = null,
   interactive = true,
   height = 340,
+  // Optional: (aod) => share of haze-free solar output, from the page's full solar model.
+  // When given, the scene shows exactly the same figure as the page headline.
+  shareForAod = null,
 }) {
   const airMode = aqi !== null || doeApi !== null;
   const aodToday = airMode ? 0.2 + 1.8 * hazeFromIndex(aqi ?? doeApi) : aodIn;
@@ -162,7 +165,7 @@ export default function HazeScene3D({
 
   useEffect(() => setAod(aodToday), [aodToday]);
 
-  const share = sunShare(aod);
+  const share = shareForAod ? Math.max(0, Math.min(1, shareForAod(aod))) : sunShare(aod);
   const haze = Math.min(1, Math.max(0, (aod - 0.2) / 1.8));
   const level = hazeLevel(aod);
 
@@ -382,7 +385,8 @@ export default function HazeScene3D({
           <div className="scene3d-readout">
             <div className="k">{label || 'Haze over your roof'}</div>
             <div className="v">
-              {Math.round(share * 100)}%<small> of normal sunlight reaches the panels</small>
+              {Math.round(share * 100)}%
+              <small>{shareForAod ? " of haze-free solar output (whole day)" : ' of normal sunlight reaches the panels'}</small>
             </div>
             <div className="k">
               {level.label} · AOD {aod.toFixed(2)}

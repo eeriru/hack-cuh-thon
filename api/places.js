@@ -31,9 +31,12 @@ export default async function handler(req, res) {
     const r = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(12000) });
     const json = await r.json().catch(() => null);
     if (!json || json.status !== 'success' || !Array.isArray(json.data)) {
-      const code = json?.data?.message || `HTTP ${r.status}`;
-      res.setHeader('Cache-Control', 'no-store');
-      return res.status(code === 'too_many_requests' || code === 'call_limit_reached' ? 429 : 502).json({ error: `IQAir: ${code}`, code });
+      const raw = String(json?.data?.message || (r.status === 429 ? 'too_many_requests' : `HTTP ${r.status}`));
+      const code = raw.trim().toLowerCase().replace(/[\s-]+/g, '_');
+      const limited = code === 'too_many_requests' || code === 'call_limit_reached' || r.status === 429;
+      res.setHeader('Cache-Control', limited ? 's-maxage=60' : 'no-store');
+      if (limited) res.setHeader('Retry-After', '60');
+      return res.status(limited ? 429 : 502).json({ error: limited ? 'IQAir is busy (free plan: 5 lookups a minute)' : `IQAir: ${raw}`, code, limited });
     }
     const names = json.data.map((d) => d.state || d.city).filter(Boolean);
     res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=604800');

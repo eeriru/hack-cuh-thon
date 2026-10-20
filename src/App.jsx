@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import AirQualityPage from './components/AirQualityPage.jsx';
 import SolarPage from './components/SolarPage.jsx';
+import WeatherPage from './components/WeatherPage.jsx';
 import RankingsPage from './components/RankingsPage.jsx';
 import MethodPage from './components/MethodPage.jsx';
 import { LocationBar } from './components/common.jsx';
@@ -10,7 +11,8 @@ import { DEFAULT_PLACE } from './lib/places.js';
 
 const TABS = [
   { id: 'air', label: 'Air quality' },
-  { id: 'solar', label: 'Solar haze loss' },
+  { id: 'weather', label: 'Weather' },
+  { id: 'solar', label: 'Solar forecast' },
   { id: 'rankings', label: 'Rankings' },
   { id: 'method', label: 'How it works' },
 ];
@@ -74,6 +76,7 @@ export default function App() {
             </svg>
             <span className="brand-name">
               Suria<span>Haze</span>
+              <small className="brand-tag">Solar & weather assistant</small>
             </span>
           </a>
           <nav className="nav" aria-label="Main">
@@ -86,7 +89,8 @@ export default function App() {
         </div>
       </header>
       <main className="shell">
-        {(tab === 'air' || tab === 'solar') && <LocationBar place={place} onChange={setPlace} />}
+        {(tab === 'air' || tab === 'weather' || tab === 'solar') && <LocationBar place={place} onChange={setPlace} />}
+        {tab === 'weather' && <WeatherPage place={place} engine={engine} settings={settings} go={go} />}
         {tab === 'air' && <AirQualityPage place={place} engine={engine} go={go} />}
         {tab === 'solar' && <SolarPage place={place} engine={engine} settings={settings} setSettings={setSettings} go={go} />}
         {tab === 'rankings' && (
@@ -101,8 +105,8 @@ export default function App() {
         )}
         {tab === 'method' && <MethodPage engine={engine} />}
         <footer className="footer">
-          SuriaHaze — a hackathon prototype for the Township of Tomorrow. Air quality: IQAir (US AQI) and the Department of Environment (DOE) official API via MyEQMS. Forecasts, haze and
-          sunlight: Open-Meteo (Copernicus CAMS, JMA/JAXA Himawari). Solar figures are model estimates.
+          SuriaHaze — a hackathon prototype for the Township of Tomorrow. Air quality: IQAir (US AQI) and the Department of Environment (DOE) official API via MyEQMS. Weather, haze and
+          sunlight: Open-Meteo (weather models, Copernicus CAMS, JMA/JAXA Himawari). Solar figures are model estimates.
         </footer>
       </main>
     </>

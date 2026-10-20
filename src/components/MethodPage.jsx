@@ -4,7 +4,7 @@ export default function MethodPage({ engine }) {
     <>
       <div className="place-title">
         <h1>How it works</h1>
-        <span className="sub">A hybrid physics + machine-learning model</span>
+        <span className="sub">A solar and weather assistant built on a hybrid physics + machine-learning model</span>
       </div>
 
       <div className="card section" style={{ borderColor: trained ? 'var(--good)' : 'var(--sun)' }}>
@@ -82,6 +82,30 @@ export default function MethodPage({ engine }) {
           </div>
           <div className="step">
             <div>
+              <h3>Where the solar goes (full loss breakdown)</h3>
+              <p>Each day's output is traced from the ideal down to the forecast, step by step, so the steps always add up:</p>
+              <div className="formula">
+                Ideal (perfect, cool panel, clear sky) − inverter & wiring (~14%) − heat (0.4% per °C above 25 °C) − clouds & rain −
+                haze − dust on panels = what your panels make
+              </div>
+              <p>
+                Dust is an estimate: about 1% after rain, plus ~0.4% per dry day and 0.5% on smoky days, up to 6%. Rain washes the
+                panels clean, so the app counts dry days since the last rain of 2 mm or more.
+              </p>
+            </div>
+          </div>
+          <div className="step">
+            <div>
+              <h3>Weather forecast and calculations</h3>
+              <p>
+                7-day forecast (temperature, rain amount and chance, wind, UV, sunshine) from Open-Meteo's weather models. The app
+                calculates the heat index (NOAA), dew point (Magnus formula), heat-stress warnings, UV and rain levels, and the solar
+                output for each forecast day.
+              </p>
+            </div>
+          </div>
+          <div className="step">
+            <div>
               <h3>Battery and chores plan</h3>
               <p>
                 The day is replayed hour by hour with the predicted solar output. The planner tries every combination of three levers
@@ -103,7 +127,7 @@ export default function MethodPage({ engine }) {
               nearest station to the chosen place
             </li>
             <li>Haze (aerosol optical depth), pollutant estimates and air-quality forecasts: Open-Meteo Air Quality API (Copernicus CAMS)</li>
-            <li>Weather and clouds: Open-Meteo Forecast API</li>
+            <li>Weather, clouds, rain, UV and the 7-day forecast: Open-Meteo Forecast API</li>
             <li>Measured sunlight: Open-Meteo Satellite Radiation API (JMA/JAXA Himawari)</li>
             <li>Place search: Open-Meteo Geocoding API</li>
           </ul>

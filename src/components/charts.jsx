@@ -164,3 +164,57 @@ export function SocChart({ standard, smart, height = 150 }) {
     </svg>
   );
 }
+
+/** Next hours: temperature and feels-like lines over rain bars. rows: [{ t, label, temp, feels, rain, rainChance }] */
+export function WeatherChart({ rows, height = 220 }) {
+  const [hover, setHover] = useState(null);
+  const H = height;
+  const pad = { l: 34, r: 34, t: 14, b: 26 };
+  if (!rows.length) return null;
+  const temps = rows.flatMap((r) => [r.temp, r.feels]).filter((v) => v !== null && v !== undefined);
+  const tMin = Math.floor(Math.min(...temps) - 1);
+  const tMax = Math.ceil(Math.max(...temps) + 1);
+  const rMax = Math.max(5, ...rows.map((r) => r.rain || 0));
+  const n = rows.length;
+  const x = (i) => pad.l + ((W - pad.l - pad.r) * (i + 0.5)) / n;
+  const yT = (v) => pad.t + (H - pad.t - pad.b) * (1 - (v - tMin) / (tMax - tMin));
+  const yR = (v) => H - pad.b - (H - pad.t - pad.b) * 0.55 * (v / rMax);
+  const line = (k) =>
+    rows
+      .map((r, i) => (r[k] === null || r[k] === undefined ? null : `${x(i).toFixed(1)},${yT(r[k]).toFixed(1)}`))
+      .filter(Boolean)
+      .map((p, i) => `${i ? 'L' : 'M'}${p}`)
+      .join(' ');
+  const bw = ((W - pad.l - pad.r) / n) * 0.62;
+  const h = hover !== null ? rows[hover] : null;
+  return (
+    <div className="chart-box">
+      <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Temperature and rain for the next hours">
+        {[tMin, Math.round((tMin + tMax) / 2), tMax].map((v) => (
+          <g key={v}>
+            <line x1={pad.l} x2={W - pad.r} y1={yT(v)} y2={yT(v)} stroke="var(--line)" strokeDasharray="3 4" />
+            <text x={pad.l - 6} y={yT(v) + 4} textAnchor="end">{v}°</text>
+          </g>
+        ))}
+        <text x={W - pad.r + 6} y={yR(rMax) + 4}>{rMax.toFixed(0)}mm</text>
+        {rows.map((r, i) => (
+          <g key={r.t}>
+            {r.rain > 0 && <rect x={x(i) - bw / 2} y={yR(r.rain)} width={bw} height={H - pad.b - yR(r.rain)} rx="3" fill="#6f8fb8" opacity="0.75" />}
+            {(i % Math.ceil(n / 8) === 0) && <text x={x(i)} y={H - 8} textAnchor="middle">{r.label}</text>}
+            <rect x={x(i) - (W - pad.l - pad.r) / n / 2} y={pad.t} width={(W - pad.l - pad.r) / n} height={H - pad.t - pad.b} fill="transparent" onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} />
+          </g>
+        ))}
+        <path d={line('feels')} fill="none" stroke="#e8833a" strokeWidth="2" strokeDasharray="5 4" />
+        <path d={line('temp')} fill="none" stroke="var(--ink)" strokeWidth="2.5" />
+        {h && <line x1={x(hover)} x2={x(hover)} y1={pad.t} y2={H - pad.b} stroke="var(--ink)" strokeOpacity="0.25" />}
+      </svg>
+      {h && (
+        <div className="tip" style={{ left: `${(x(hover) / W) * 100}%`, top: `${(yT(h.temp ?? tMin) / H) * 100}%` }}>
+          <b>{h.sub}</b> · {Math.round(h.temp)}°C, feels {h.feels !== null && h.feels !== undefined ? Math.round(h.feels) : '–'}°C
+          <br />
+          Rain {(h.rain ?? 0).toFixed(1)} mm{h.rainChance !== null && h.rainChance !== undefined ? ` · ${Math.round(h.rainChance)}% chance` : ''}
+        </div>
+      )}
+    </div>
+  );
+}

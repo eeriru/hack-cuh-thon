@@ -216,19 +216,27 @@ await (async () => {
   res = fakeRes();
   await iqHandler({ method: 'GET', query: { lat: '3.1712345', lon: '101.4698765' } }, res);
   assert.equal(res.code, 200);
-  assert.match(calledUrl, /lat=3\.17&lon=101\.47&key=secret-key/);
+  assert.match(calledUrl, /lat=3\.15&lon=101\.45&key=secret-key/); // rounded to 0.05° so nearby places share a reading
   const body = JSON.parse(res.body);
   assert.equal(body.aqius, 161);
   assert.equal(body.city, 'Shah Alam');
   assert.equal(body.weather.tempC, 32);
   assert.ok(!res.body.includes('secret-key'));
-  assert.match(res.headers['cache-control'], /s-maxage=900/);
+  assert.match(res.headers['cache-control'], /s-maxage=1800/);
 
   globalThis.fetch = async () => new Response(JSON.stringify({ status: 'fail', data: { message: 'call_limit_reached' } }), { status: 200 });
   res = fakeRes();
   await iqHandler({ method: 'GET', query: { lat: '3.17', lon: '101.47' } }, res);
   assert.equal(res.code, 429);
   assert.match(JSON.parse(res.body).error, /limit/);
+  // IQAir's plain-text "Too Many Requests" must be treated as the per-minute limit, and cached briefly
+  globalThis.fetch = async () => new Response(JSON.stringify({ status: 'fail', data: { message: 'Too Many Requests' } }), { status: 429 });
+  res = fakeRes();
+  await iqHandler({ method: 'GET', query: { lat: '3.17', lon: '101.47' } }, res);
+  assert.equal(res.code, 429);
+  assert.equal(JSON.parse(res.body).limited, true);
+  assert.match(res.headers['cache-control'], /s-maxage=60/);
+  assert.equal(res.headers['retry-after'], '60');
 
   res = fakeRes();
   await iqHandler({ method: 'GET', query: {} }, res);
@@ -298,4 +306,48 @@ await (async () => {
   passed++;
   console.log('✓', name);
 })();
+
+// ---------- weather calculations & solar loss breakdown ----------
+import { heatIndex, dewPoint, heatRisk, uvLevel, rainLevel, rainByDate } from '../src/lib/weather.js';
+import { lossBreakdown, soilingForDate } from '../src/lib/losses.js';
+
+test('heat index and dew point match published values', () => {
+  // NOAA chart: 90°F (32.2°C) at 70% RH ≈ 106°F (41.1°C)
+  assert.ok(Math.abs(heatIndex(32.22, 70) - 41.1) < 0.8, `${heatIndex(32.22, 70)}`);
+  // Cool, dry: heat index ≈ air temperature
+  assert.ok(Math.abs(heatIndex(22, 40) - 21.5) < 1.5);
+  // Dew point 30°C at 70% ≈ 23.9°C
+  assert.ok(Math.abs(dewPoint(30, 70) - 23.9) < 0.3, `${dewPoint(30, 70)}`);
+  assert.equal(heatRisk(35).label, 'Extreme caution');
+  assert.equal(uvLevel(11.2).label, 'Extreme');
+  assert.equal(rainLevel(35).label, 'Heavy rain');
+});
+
+test('loss breakdown steps add up exactly and haze matches the headline', () => {
+  const place = { lat: 3.17, lon: 101.47 };
+  const today = todayMY();
+  const data = makeDemoData(place, addDays(today, -6), addDays(today, 3));
+  for (const d of [addDays(today, -1), today, addDays(today, 2)]) {
+    const L = computeHazeLoss(dayModelHours(data, d), { ...place, engine: PHYSICS_ENGINE });
+    const soil = soilingForDate(data, d);
+    const B = lossBreakdown(L, { soilingPct: soil.pct });
+    const sum = B.steps.reduce((a, s) => a + s.kwh, 0);
+    assert.ok(Math.abs(B.ideal - sum - B.final) < 1e-9, 'steps must sum to ideal - final');
+    assert.ok(Math.abs(B.steps.find((s) => s.key === 'haze').kwh - L.lossKwh) < 1e-9, 'haze step = headline haze loss');
+    assert.ok(B.steps.find((s) => s.key === 'heat').kwh > 0, 'panels lose output to heat in the tropics');
+    assert.ok(B.final > 0 && B.final < B.ideal);
+    assert.ok(soil.pct >= 1 && soil.pct <= 6);
+  }
+});
+
+test('rain washes the panels: soiling resets after a wet day', () => {
+  const t0 = Date.parse('2026-10-10T00:00:00+08:00') / 1000;
+  const mk = (rainOnDay) =>
+    Array.from({ length: 24 * 6 }, (_, i) => ({ t: t0 + (i + 1) * 3600, rain: Math.floor(i / 24) === rainOnDay && i % 24 === 15 ? 12 : 0, pm2_5: 20 }));
+  const wetYesterday = soilingForDate({ hours: mk(4), offsetSec: 8 * 3600 }, '2026-10-16');
+  const wetLongAgo = soilingForDate({ hours: mk(0), offsetSec: 8 * 3600 }, '2026-10-16');
+  assert.equal(wetYesterday.dryDays, 1);
+  assert.ok(wetLongAgo.pct > wetYesterday.pct);
+  assert.equal(rainByDate(mk(4), 8 * 3600).get('2026-10-14'), 12);
+});
 console.log(`\n${passed} tests passed`);
