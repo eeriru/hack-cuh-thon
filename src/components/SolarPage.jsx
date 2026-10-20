@@ -6,12 +6,14 @@ import { planDay, hourRanges, fmtHour } from '../lib/battery.js';
 import { hazeLevel } from '../lib/aqi.js';
 import { SolarChart, SocChart } from './charts.jsx';
 import HazeScene3D from './HazeScene3D.jsx';
+import AirNow from './AirNow.jsx';
+import { TOWNSHIPS } from '../lib/places.js';
 import { useAsync, Loading, DemoBanner, fmtDate } from './common.jsx';
 
 const MAX_PAST = 85;
 const MAX_AHEAD = 4;
 
-export default function SolarPage({ place, engine, settings, setSettings }) {
+export default function SolarPage({ place, engine, settings, setSettings, go }) {
   const today = todayMY();
   const [anchor, setAnchor] = useState(today);
   const [selected, setSelected] = useState(today);
@@ -109,6 +111,8 @@ export default function SolarPage({ place, engine, settings, setSettings }) {
         </span>
       </div>
 
+      <AirNow place={place} go={go} />
+
       <section className="headline section">
         <div>
           <div className="eyebrow">{isPast ? 'Replay' : 'Forecast'} · {fmtDate(current.d, { weekday: 'long', day: 'numeric', month: 'long' })}</div>
@@ -165,7 +169,11 @@ export default function SolarPage({ place, engine, settings, setSettings }) {
           A 3D view of terrace homes at {isPast ? 'the' : "the forecast"} haze level for {fmtDate(current.d)}. Drag to look around, or move the
           slider to see how thicker haze dims the panels.
         </p>
-        <HazeScene3D aod={L.meanAod} label={`${fmtDate(current.d)} · ${place.name}`} />
+        <HazeScene3D
+          aod={L.meanAod}
+          label={`${fmtDate(current.d)} · ${place.name}`}
+          signTitle={TOWNSHIPS.some((t) => t.name === place.name) ? place.name : null}
+        />
       </div>
 
       <div className="card section">

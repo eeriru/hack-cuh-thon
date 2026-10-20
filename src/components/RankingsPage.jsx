@@ -1,20 +1,55 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getManyPlaces, addDays, todayMY, dayModelHours } from '../lib/api.js';
 import { computeHazeLoss } from '../lib/model.js';
 import { DEFAULT_SYSTEM } from '../lib/solar.js';
-import { aqiLevel, hazeLevel } from '../lib/aqi.js';
+import { aqiLevel } from '../lib/aqi.js';
+import { getIqair } from '../lib/iqair.js';
 import { tryDoeStations, nearestStation, doeLevel, DOE_SYMBOLS, DOE_SOURCE_URL } from '../lib/doe.js';
 import { TOWNSHIPS, CITIES } from '../lib/places.js';
 import { useAsync, Loading, DemoBanner, fmtTime } from './common.jsx';
 
+// IQAir's free plan allows 5 lookups a minute, so readings are fetched one at a time,
+// about every 13 seconds, and fill in as they arrive. Vercel caches each one for 15
+// minutes, so once loaded they come back instantly for every visitor.
+function useIqairQueue(places, active) {
+  const [results, setResults] = useState({});
+  useEffect(() => {
+    if (!active) return undefined;
+    let cancelled = false;
+    let timer = 0;
+    const queue = [...places];
+    const next = (delayMs) => {
+      timer = setTimeout(async () => {
+        const p = queue[0];
+        if (!p || cancelled) return;
+        const started = Date.now();
+        const r = await getIqair(p);
+        if (cancelled) return;
+        if (r.error && /limit/i.test(r.error)) return next(60000); // wait out the per-minute limit, then retry
+        queue.shift();
+        setResults((m) => ({ ...m, [p.name]: r }));
+        // A quick answer came from cache, so the next one can go straight away
+        next(Date.now() - started < 400 ? 0 : 13000);
+      }, delayMs);
+    };
+    next(0);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [places, active]);
+  return results;
+}
+
 export default function RankingsPage({ engine, settings, onPick }) {
   const [group, setGroup] = useState('townships');
-  const [sortBy, setSortBy] = useState('air');
+  const [sortBy, setSortBy] = useState('doe');
   const [homes, setHomes] = useState(500);
   const today = todayMY();
   const tomorrow = addDays(today, 1);
   const places = group === 'cities' ? CITIES : TOWNSHIPS;
   const doe = useAsync(() => tryDoeStations(), [today]);
+  const iqResults = useIqairQueue(places, group !== 'stations');
   const { data, loading } = useAsync(
     () => (group === 'stations' ? Promise.resolve([]) : getManyPlaces(places, { startDate: today, endDate: tomorrow })),
     [group, today]
@@ -26,20 +61,26 @@ export default function RankingsPage({ engine, settings, onPick }) {
     const list = data.map((d) => {
       const loss = computeHazeLoss(dayModelHours(d, tomorrow), { ...d.place, engine, system });
       const near = doe.data ? nearestStation(doe.data, d.place) : null;
+      const iq = iqResults[d.place.name];
       return {
         place: d.place,
         official: near,
         api: near?.station.latest.api ?? null,
-        usAqi: d.current.us_aqi,
-        aod: d.current.aod,
+        iq: iq && !iq.error ? iq : null,
+        iqState: iq ? (iq.error ? 'error' : 'ok') : 'waiting',
         loss,
         source: d.source,
       };
     });
-    const airKey = (r) => (doe.data ? r.api ?? -1 : r.usAqi ?? -1);
-    list.sort((a, b) => (sortBy === 'air' ? airKey(b) - airKey(a) : b.loss.lossPct - a.loss.lossPct));
+    const key = {
+      doe: (r) => r.api ?? -1,
+      iqair: (r) => r.iq?.aqius ?? -1,
+      loss: (r) => r.loss.lossPct,
+    }[sortBy];
+    list.sort((a, b) => key(b) - key(a));
     return list;
-  }, [data, engine, settings.kwp, sortBy, tomorrow, doe.data, group]);
+  }, [data, engine, settings.kwp, sortBy, tomorrow, doe.data, group, iqResults]);
+  const iqDone = rows.filter((r) => r.iqState !== 'waiting').length;
 
   const stations = useMemo(() => {
     if (!doe.data) return [];
@@ -61,14 +102,14 @@ export default function RankingsPage({ engine, settings, onPick }) {
         <div className="banner" role="status">
           <span aria-hidden="true">ℹ️</span>
           <span>
-            Official DOE readings could not be loaded right now, so air quality below is a model estimate (US AQI). Official readings:{' '}
+            Official DOE readings could not be loaded right now. Check{' '}
             <a href={DOE_SOURCE_URL} target="_blank" rel="noreferrer">MyEQMS (DOE)</a>.
           </span>
         </div>
       )}
       <div className="place-title">
         <h1>Rankings</h1>
-        <span className="sub">Official air quality now, and how much solar the haze will take tomorrow</span>
+        <span className="sub">Air quality now from IQAir and the DOE, and how much solar the haze will take tomorrow</span>
       </div>
       <div className="spread section">
         <div className="chips">
@@ -79,7 +120,8 @@ export default function RankingsPage({ engine, settings, onPick }) {
         {group !== 'stations' && (
           <div className="chips">
             <span className="small muted" style={{ alignSelf: 'center' }}>Sort by</span>
-            <button className={`chip ${sortBy === 'air' ? 'active' : ''}`} onClick={() => setSortBy('air')}>Air quality</button>
+            <button className={`chip ${sortBy === 'doe' ? 'active' : ''}`} onClick={() => setSortBy('doe')}>DOE API</button>
+            <button className={`chip ${sortBy === 'iqair' ? 'active' : ''}`} onClick={() => setSortBy('iqair')}>IQAir</button>
             <button className={`chip ${sortBy === 'loss' ? 'active' : ''}`} onClick={() => setSortBy('loss')}>Solar loss</button>
           </div>
         )}
@@ -98,16 +140,15 @@ export default function RankingsPage({ engine, settings, onPick }) {
                   <tr>
                     <th>#</th>
                     <th>{group === 'townships' ? 'Township' : 'City'}</th>
-                    <th>{doe.data ? 'Official API (DOE)' : 'US AQI (model)'}</th>
-                    <th>Haze</th>
+                    <th>DOE API (official)</th>
+                    <th>IQAir US AQI</th>
                     <th style={{ minWidth: 180 }}>Solar lost tomorrow ({settings.kwp} kW)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((r, i) => {
-                    const official = doe.data && r.official;
-                    const l = official ? doeLevel(r.api) : aqiLevel(r.usAqi);
-                    const value = official ? r.api : r.usAqi;
+                    const dl = doeLevel(r.api);
+                    const il = aqiLevel(r.iq?.aqius);
                     return (
                       <tr key={r.place.name} className="clickable" onClick={() => onPick(r.place)} title="Open this location">
                         <td className="rank">{i + 1}</td>
@@ -116,18 +157,29 @@ export default function RankingsPage({ engine, settings, onPick }) {
                           <div className="small muted">{r.place.area}</div>
                         </td>
                         <td>
-                          <span className="badge" style={{ background: l.color, color: l.ink }}>
-                            {value !== undefined && value !== null ? Math.round(value) : '–'}
-                          </span>
-                          <div className="small muted">
-                            {official
-                              ? `${l.label} · ${r.official.station.name} station, ${Math.round(r.official.distanceKm)} km`
-                              : doe.data
-                                ? 'No DOE station reporting nearby'
-                                : l.short || l.label}
-                          </div>
+                          {r.official ? (
+                            <>
+                              <span className="badge" style={{ background: dl.color, color: dl.ink }}>{r.api}</span>
+                              <div className="small muted">
+                                {dl.label} · {r.official.station.name}, {Math.round(r.official.distanceKm)} km
+                              </div>
+                            </>
+                          ) : (
+                            <span className="small muted">{doe.data ? 'No station nearby' : 'Unavailable'}</span>
+                          )}
                         </td>
-                        <td className="small">{hazeLevel(r.aod).label}</td>
+                        <td>
+                          {r.iq ? (
+                            <>
+                              <span className="badge" style={{ background: il.color, color: il.ink }}>{Math.round(r.iq.aqius)}</span>
+                              <div className="small muted">
+                                {il.short || il.label} · {r.iq.city}
+                              </div>
+                            </>
+                          ) : (
+                            <span className="small muted">{r.iqState === 'waiting' ? 'Loading…' : 'Unavailable'}</span>
+                          )}
+                        </td>
                         <td>
                           <div className="lossbar">
                             <div className="track">
@@ -143,11 +195,11 @@ export default function RankingsPage({ engine, settings, onPick }) {
                 </tbody>
               </table>
             </div>
-            {doe.data && (
-              <p className="small muted" style={{ margin: '10px 0 0' }}>
-                Air quality: latest hourly reading from the nearest DOE station (IQAir's free plan allows only 5 lookups a minute, too few for a ranking). Haze level and solar loss: model forecast.
-              </p>
-            )}
+            <p className="small muted" style={{ margin: '10px 0 0' }}>
+              DOE: latest hourly reading from the nearest official station. IQAir: nearest IQAir city
+              {iqDone < rows.length ? ` (loading ${iqDone}/${rows.length}; IQAir's free plan allows 5 lookups a minute)` : ''}. Solar
+              loss: haze and sunlight forecast model.
+            </p>
           </div>
 
           <div className="card section">

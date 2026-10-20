@@ -88,7 +88,7 @@ export default function App() {
       <main className="shell">
         {(tab === 'air' || tab === 'solar') && <LocationBar place={place} onChange={setPlace} />}
         {tab === 'air' && <AirQualityPage place={place} engine={engine} go={go} />}
-        {tab === 'solar' && <SolarPage place={place} engine={engine} settings={settings} setSettings={setSettings} />}
+        {tab === 'solar' && <SolarPage place={place} engine={engine} settings={settings} setSettings={setSettings} go={go} />}
         {tab === 'rankings' && (
           <RankingsPage
             engine={engine}

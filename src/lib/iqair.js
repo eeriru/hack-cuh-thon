@@ -12,6 +12,19 @@ export const IQAIR_POLLUTANTS = {
   co: 'Carbon monoxide',
 };
 
+// IQAir weather icon codes (first two characters) → plain words
+export const IQAIR_CONDITIONS = {
+  '01': 'Clear sky',
+  '02': 'Few clouds',
+  '03': 'Scattered clouds',
+  '04': 'Cloudy',
+  '09': 'Showers',
+  '10': 'Rain',
+  '11': 'Thunderstorm',
+  '13': 'Snow',
+  '50': 'Haze / mist',
+};
+
 const cache = new Map();
 
 /** Resolves to the IQAir reading for the nearest IQAir city, or { error } if unavailable. */

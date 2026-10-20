@@ -310,3 +310,20 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-
 }
 .search-results:not(.browse) { max-height: 460px; overflow-y: auto; }
 
+
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 480px) { .compare { grid-template-columns: 1fr; } }
+.cmp { background: var(--paper); border-radius: 14px; padding: 12px 14px; }
+.cmp-src { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); margin-bottom: 8px; }
+.big-badge { font-family: var(--font-display); font-size: 30px; padding: 4px 14px; border-radius: 12px; }
+.cmp-cat { font-weight: 700; margin: 6px 0 2px; }
+.airnow { display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; }
+.airnow-k { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); }
+.airnow-item { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; }
+.airnow .chip { margin-left: auto; }
+@media (max-width: 600px) {
+  /* keep the ground (homes + signboard) visible: put the reading card in the sky */
+  .scene3d-readout { top: 46px; bottom: auto; padding: 6px 10px; }
+  .scene3d-readout .v { font-size: 18px; }
+  .scene3d-readout .v small { font-size: 11.5px; }
+}
