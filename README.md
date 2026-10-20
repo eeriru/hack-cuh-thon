@@ -16,7 +16,11 @@ energy efficiency + climate resilience; People pillar: healthier, safer lives).
 | **Rankings** | Sime Darby townships or cities ranked by official API or tomorrow's solar loss, all DOE stations ranked, plus township-wide MWh / RM / CO₂ impact |
 | **How it works** | The method, which model is live, data sources, honest limits |
 
-No API keys or paid services. Data sources:
+No paid services. Data sources:
+
+- **Headline air quality: IQAir** (US AQI for the nearest IQAir city, the same number as iqair.com
+  and the IQAir app). Needs a free IQAir API key — see *Connect IQAir* below. Without a key the app
+  simply shows the DOE reading as the headline instead.
 
 - **Current air quality:** the Department of Environment's official Air Pollutant Index, from the
   public MyEQMS hourly feed (`https://eqms.doe.gov.my/api3/publicportalapims/apitablehourly`). The DOE
@@ -35,6 +39,19 @@ demo, the app switches to a clearly labelled simulated haze week.
 3. Click **Deploy**. Done.
 
 Or from a terminal: `npm i -g vercel && vercel`.
+
+## Connect IQAir (free, 5 minutes)
+
+1. Sign up at [dashboard.iqair.com](https://dashboard.iqair.com) and create an API key on the free
+   **Community** plan. (If self-sign-up isn't offered, request it from the
+   [IQAir API page](https://www.iqair.com/air-pollution-data-api).)
+2. In Vercel: **Project → Settings → Environment Variables** → add `IQAIR_API_KEY` = your key → **Redeploy**.
+3. Locally: create `.env.local` containing `IQAIR_API_KEY=your-key` (it's git-ignored, never commit it).
+
+The key stays on the server (`api/iqair.js`); the browser never sees it. The free plan allows 5 calls a
+minute and 500 a day, so answers are cached for 15 minutes per location. That is plenty for a demo,
+but too few to rank many towns at once, which is why the Rankings page uses DOE readings. Check
+IQAir's terms of use for the Community plan and keep the "Air quality: IQAir" credit in the footer.
 
 ## Run locally
 
@@ -93,6 +110,8 @@ src/lib/api.js        Open-Meteo calls, data shaping
 src/lib/demo.js       offline simulated haze week
 src/lib/doe.js        official DOE readings: parsing, bands, nearest station
 api/doe.js            Vercel server function that fetches the DOE feed
+api/iqair.js          Vercel server function that calls IQAir with your secret key
+src/lib/iqair.js      IQAir reading in the browser
 src/components/       pages and SVG charts
 training/             Colab notebook + training script
 tests/                core tests + JS/Python parity test

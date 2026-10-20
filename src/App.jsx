@@ -101,7 +101,7 @@ export default function App() {
         )}
         {tab === 'method' && <MethodPage engine={engine} />}
         <footer className="footer">
-          SuriaHaze — a hackathon prototype for the Township of Tomorrow. Air quality: Department of Environment (DOE) official API via MyEQMS. Forecasts, haze and
+          SuriaHaze — a hackathon prototype for the Township of Tomorrow. Air quality: IQAir (US AQI) and the Department of Environment (DOE) official API via MyEQMS. Forecasts, haze and
           sunlight: Open-Meteo (Copernicus CAMS, JMA/JAXA Himawari). Solar figures are model estimates.
         </footer>
       </main>

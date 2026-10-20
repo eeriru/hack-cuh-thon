@@ -3,6 +3,7 @@ import { getPlaceData, addDays, todayMY, localDateOf, dayModelHours } from '../l
 import { aqiLevel, AQI_LEVELS, ADVICE, POLLUTANTS, hazeLevel, WEATHER_CODES } from '../lib/aqi.js';
 import { computeHazeLoss } from '../lib/model.js';
 import { tryDoeStations, nearestStation, doeLevel, DOE_LEVELS, DOE_ADVICE, DOE_SYMBOLS, DOE_SOURCE_URL } from '../lib/doe.js';
+import { getIqair, IQAIR_POLLUTANTS, IQAIR_URL } from '../lib/iqair.js';
 import { AqiBars } from './charts.jsx';
 import { useAsync, Loading, DemoBanner, fmtTime, fmtDate } from './common.jsx';
 
@@ -58,6 +59,7 @@ export default function AirQualityPage({ place, engine, go }) {
     [place.lat, place.lon, today]
   );
   const doe = useAsync(() => tryDoeStations(), [today]);
+  const iq = useAsync(() => getIqair(place), [place.lat, place.lon]);
   const official = useMemo(() => (doe.data ? nearestStation(doe.data, place) : null), [doe.data, place]);
 
   const derived = useMemo(() => {
@@ -83,20 +85,33 @@ export default function AirQualityPage({ place, engine, go }) {
     return { next, days, solarToday, solarTomorrow };
   }, [data, engine, place, today]);
 
-  if (loading || !data || doe.loading) return <Loading />;
+  if (loading || !data || doe.loading || iq.loading) return <Loading />;
   const c = data.current;
   const lvl = aqiLevel(c.us_aqi);
   const haze = hazeLevel(c.aod);
   const st = official?.station;
   const reading = st?.latest;
   const dl = doeLevel(reading?.api);
-  const tipsKey = st ? DOE_TO_TIPS[dl.key] : lvl.key;
+  const iqa = iq.data && !iq.data.error ? iq.data : null;
+  const il = aqiLevel(iqa?.aqius);
+  const tipsKey = iqa ? il.key : st ? DOE_TO_TIPS[dl.key] : lvl.key;
+  const iqaTs = iqa?.ts ? Date.parse(iqa.ts) / 1000 : null;
+  // Weather: IQAir's when available, otherwise the forecast model's
+  const wx = iqa?.weather?.tempC !== undefined && iqa?.weather?.tempC !== null
+    ? { temp: iqa.weather.tempC, rh: iqa.weather.humidity, wind: iqa.weather.windMs !== null ? iqa.weather.windMs * 3.6 : null }
+    : { temp: c.temp, rh: c.rh, wind: c.wind };
   const past24 = st ? st.readings.slice(-24) : [];
 
   return (
     <>
       <DemoBanner source={data.source} />
-      {!st && (
+      {iq.data?.error && !iq.data.notConfigured && (
+        <div className="banner" role="status">
+          <span aria-hidden="true">ℹ️</span>
+          <span>{iq.data.error}. Showing {st ? 'the official DOE reading' : 'a model estimate'} instead.</span>
+        </div>
+      )}
+      {!iqa && !st && (
         <div className="banner" role="status">
           <span aria-hidden="true">ℹ️</span>
           <span>
@@ -110,12 +125,30 @@ export default function AirQualityPage({ place, engine, go }) {
         <h1>{place.name}</h1>
         <span className="sub">{place.area}</span>
         <span className="stamp">
-          {st ? `DOE reading for ${fmtTime(reading.t, 8 * 3600)}` : `Updated ${c.time ? fmtTime(c.time, data.offsetSec) : '—'} local time`}
+          {iqa && iqaTs
+            ? `IQAir · updated ${fmtTime(iqaTs, 8 * 3600)}`
+            : st
+              ? `DOE reading for ${fmtTime(reading.t, 8 * 3600)}`
+              : `Updated ${c.time ? fmtTime(c.time, data.offsetSec) : '—'} local time`}
         </span>
       </div>
 
       <section className="hero section" aria-label="Current air quality">
-        {st ? (
+        {iqa ? (
+          <div className="hero-aqi" style={{ background: il.color, color: il.ink }}>
+            <span className="label">US AQI · IQAir · {iqa.city}</span>
+            <div className="big">
+              <span className="num">{Math.round(iqa.aqius)}</span>
+              <span className="cat">{il.label}</span>
+              <span className="face" aria-hidden="true">{il.face}</span>
+            </div>
+            <span className="main-pol">
+              {IQAIR_POLLUTANTS[iqa.mainus] ? `Main pollutant: ${IQAIR_POLLUTANTS[iqa.mainus]}` : ''}
+              {st ? ` · Official DOE API at ${st.name}: ${reading.api} (${dl.label})` : ''}
+            </span>
+            <AqiScale aqi={iqa.aqius} />
+          </div>
+        ) : st ? (
           <div className="hero-aqi" style={{ background: dl.color, color: dl.ink }}>
             <span className="label">Official API · Department of Environment</span>
             <div className="big">
@@ -158,15 +191,15 @@ export default function AirQualityPage({ place, engine, go }) {
           <div className="stat">
             <div className="k">Temperature</div>
             <div className="v">
-              {c.temp !== undefined && c.temp !== null ? Math.round(c.temp) : '–'}
+              {wx.temp !== undefined && wx.temp !== null ? Math.round(wx.temp) : '–'}
               <small>°C</small>
             </div>
           </div>
           <div className="stat">
             <div className="k">Humidity · Wind</div>
             <div className="v">
-              {c.rh !== undefined && c.rh !== null ? Math.round(c.rh) : '–'}
-              <small>%</small> {c.wind !== undefined && c.wind !== null ? Math.round(c.wind) : '–'}
+              {wx.rh !== undefined && wx.rh !== null ? Math.round(wx.rh) : '–'}
+              <small>%</small> {wx.wind !== undefined && wx.wind !== null ? Math.round(wx.wind) : '–'}
               <small>km/h</small>
             </div>
           </div>
@@ -176,9 +209,12 @@ export default function AirQualityPage({ place, engine, go }) {
       <div className="grid grid-2 section">
         {st ? (
           <div className="card">
-            <h2>Past 24 hours</h2>
+            <div className="spread">
+              <h2>Official DOE readings</h2>
+              <span className="badge" style={{ background: dl.color, color: dl.ink }}>API {reading.api}</span>
+            </div>
             <p className="lede">
-              Official hourly API at {st.name}. Source:{' '}
+              Past 24 hours at {st.name} ({Math.round(official.distanceKm)} km away), Malaysian API scale. Source:{' '}
               <a href={DOE_SOURCE_URL} target="_blank" rel="noreferrer">DOE MyEQMS</a>.
             </p>
             <AqiBars
@@ -211,7 +247,7 @@ export default function AirQualityPage({ place, engine, go }) {
           <h2>Health advice</h2>
           {st ? (
             <p className="lede" style={{ color: 'var(--ink-2)' }}>
-              <b>DOE advice:</b> {DOE_ADVICE[dl.key]}
+              <b>DOE advice{iqa ? ' (official API)' : ''}:</b> {DOE_ADVICE[dl.key]}
             </p>
           ) : (
             <p className="lede">What to do at the current level.</p>

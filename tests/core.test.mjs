@@ -193,4 +193,49 @@ await (async () => {
   console.log('✓', name);
 })();
 
+
+// ---------- IQAir server function ----------
+import iqHandler from '../api/iqair.js';
+await (async () => {
+  const name = 'IQAir function: hides key, reshapes data, explains errors';
+  const realFetch = globalThis.fetch;
+  let calledUrl = '';
+  delete process.env.IQAIR_API_KEY;
+  let res = fakeRes();
+  await iqHandler({ method: 'GET', query: { lat: '3.17', lon: '101.47' } }, res);
+  assert.equal(res.code, 501);
+
+  process.env.IQAIR_API_KEY = 'secret-key';
+  globalThis.fetch = async (url) => {
+    calledUrl = url;
+    return new Response(JSON.stringify({ status: 'success', data: { city: 'Shah Alam', state: 'Selangor', country: 'Malaysia',
+      location: { type: 'Point', coordinates: [101.53, 3.07] },
+      current: { pollution: { ts: '2026-10-20T06:00:00.000Z', aqius: 161, mainus: 'p2', aqicn: 95, maincn: 'p2' },
+        weather: { ts: '2026-10-20T06:00:00.000Z', tp: 32, pr: 1008, hu: 62, ws: 2.1, wd: 220, ic: '50d' } } } }), { status: 200 });
+  };
+  res = fakeRes();
+  await iqHandler({ method: 'GET', query: { lat: '3.1712345', lon: '101.4698765' } }, res);
+  assert.equal(res.code, 200);
+  assert.match(calledUrl, /lat=3\.17&lon=101\.47&key=secret-key/);
+  const body = JSON.parse(res.body);
+  assert.equal(body.aqius, 161);
+  assert.equal(body.city, 'Shah Alam');
+  assert.equal(body.weather.tempC, 32);
+  assert.ok(!res.body.includes('secret-key'));
+  assert.match(res.headers['cache-control'], /s-maxage=900/);
+
+  globalThis.fetch = async () => new Response(JSON.stringify({ status: 'fail', data: { message: 'call_limit_reached' } }), { status: 200 });
+  res = fakeRes();
+  await iqHandler({ method: 'GET', query: { lat: '3.17', lon: '101.47' } }, res);
+  assert.equal(res.code, 429);
+  assert.match(JSON.parse(res.body).error, /limit/);
+
+  res = fakeRes();
+  await iqHandler({ method: 'GET', query: {} }, res);
+  assert.equal(res.code, 400);
+  globalThis.fetch = realFetch;
+  delete process.env.IQAIR_API_KEY;
+  passed++;
+  console.log('✓', name);
+})();
 console.log(`\n${passed} tests passed`);

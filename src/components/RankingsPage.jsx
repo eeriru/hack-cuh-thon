@@ -145,7 +145,7 @@ export default function RankingsPage({ engine, settings, onPick }) {
             </div>
             {doe.data && (
               <p className="small muted" style={{ margin: '10px 0 0' }}>
-                Air quality: latest hourly reading from the nearest DOE station. Haze level and solar loss: model forecast.
+                Air quality: latest hourly reading from the nearest DOE station (IQAir's free plan allows only 5 lookups a minute, too few for a ranking). Haze level and solar loss: model forecast.
               </p>
             )}
           </div>
