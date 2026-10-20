@@ -241,7 +241,7 @@ await (async () => {
 
 
 // ---------- country browsing ----------
-import { matchCountries, FALLBACK_CITIES } from '../src/lib/browse.js';
+import { matchCountries, matchRegions, matchCities, wordMatch, iqairRegionName, FALLBACK_CITIES } from '../src/lib/browse.js';
 import placesHandler from '../api/places.js';
 
 test('typing a country name offers that country', () => {
@@ -251,6 +251,20 @@ test('typing a country name offers that country', () => {
   assert.equal(matchCountries('USA')[0].iqairName, 'USA');
   assert.equal(matchCountries('Shah Alam').length, 0);
   assert.ok(FALLBACK_CITIES.ID.length >= 10 && FALLBACK_CITIES.ID.every((c) => c.lat < 7 && c.lat > -11));
+});
+
+test('search matches whole words anywhere in the name', () => {
+  assert.ok(wordMatch('kalimantan', 'East Kalimantan'));
+  assert.ok(wordMatch('east kal', 'East Kalimantan'));
+  assert.ok(!wordMatch('alimantan', 'East Kalimantan'));
+  const regions = matchRegions('Kalimantan').map((r) => r.region);
+  for (const r of ['West Kalimantan', 'Central Kalimantan', 'South Kalimantan', 'East Kalimantan', 'North Kalimantan']) assert.ok(regions.includes(r), r);
+  assert.deepEqual(matchRegions('jav').map((r) => r.region).sort(), ['Central Java', 'East Java', 'West Java']);
+  const cities = matchCities('Kalimantan').map((c) => c.name);
+  assert.ok(cities.includes('Pontianak') && cities.includes('Palangka Raya') && cities.includes('Balikpapan'));
+  assert.equal(matchCountries('korea')[0].code, 'KR');
+  assert.equal(iqairRegionName('Jakarta', ['DKI Jakarta', 'Banten']), 'DKI Jakarta');
+  assert.equal(iqairRegionName('Penang', ['Selangor', 'Johor']), null);
 });
 
 await (async () => {

@@ -54,7 +54,19 @@ export function countries() {
 
 const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 
-/** Countries matching what the user typed (by name prefix or alias), best first. */
+/**
+ * Word-based match: every word typed must be the start of some word in the name.
+ * "kalimantan" matches "East Kalimantan"; "east kal" matches "East Kalimantan";
+ * "jav" matches "West Java" and "Central Java".
+ */
+export function wordMatch(query, name) {
+  const qw = norm(query).split(/[\s,]+/).filter(Boolean);
+  if (!qw.length) return false;
+  const nw = norm(name).split(/[\s,\-–()/]+/).filter(Boolean);
+  return qw.every((w) => nw.some((x) => x.startsWith(w)));
+}
+
+/** Countries matching what the user typed (by word or alias), best first. */
 export function matchCountries(q) {
   const n = norm(q);
   if (n.length < 2) return [];
@@ -63,12 +75,61 @@ export function matchCountries(q) {
   const alias = ALIASES[n];
   if (alias) out.push(list.find((c) => c.code === alias));
   for (const c of list) {
-    const name = norm(c.name);
-    if (name === n || name.startsWith(n) || norm(c.iqairName).startsWith(n)) out.push(c);
+    if (wordMatch(n, c.name) || wordMatch(n, c.iqairName)) out.push(c);
   }
+  const rank = (c) => (c.code === alias ? 0 : norm(c.name) === n ? 1 : 2);
   return [...new Set(out.filter(Boolean))]
-    .sort((a, b) => (norm(a.name) === n ? -1 : norm(b.name) === n ? 1 : a.name.localeCompare(b.name)))
+    .sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name))
     .slice(0, 3);
+}
+
+// ---------- regions (provinces / states) known without a network call ----------
+
+export const REGIONS = {
+  ID: [
+    'Aceh', 'North Sumatra', 'West Sumatra', 'Riau', 'Riau Islands', 'Jambi', 'Bengkulu', 'South Sumatra',
+    'Bangka Belitung Islands', 'Lampung', 'Banten', 'Jakarta', 'West Java', 'Central Java', 'Yogyakarta', 'East Java',
+    'Bali', 'West Nusa Tenggara', 'East Nusa Tenggara', 'West Kalimantan', 'Central Kalimantan', 'South Kalimantan',
+    'East Kalimantan', 'North Kalimantan', 'North Sulawesi', 'Gorontalo', 'Central Sulawesi', 'West Sulawesi',
+    'South Sulawesi', 'Southeast Sulawesi', 'Maluku', 'North Maluku', 'Papua', 'West Papua', 'Southwest Papua',
+    'Central Papua', 'Highland Papua', 'South Papua',
+  ],
+  MY: [
+    'Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan', 'Pahang', 'Penang', 'Perak', 'Perlis', 'Sabah',
+    'Sarawak', 'Selangor', 'Terengganu', 'Kuala Lumpur', 'Putrajaya', 'Labuan',
+  ],
+};
+
+/** Regions whose name contains the typed words, e.g. "Kalimantan" → East/West/Central/North/South Kalimantan. */
+export function matchRegions(q) {
+  if (norm(q).length < 3) return [];
+  const list = countries();
+  const out = [];
+  for (const [code, regions] of Object.entries(REGIONS)) {
+    const country = list.find((c) => c.code === code);
+    for (const r of regions) if (wordMatch(q, r)) out.push({ country, region: r });
+  }
+  return out.slice(0, 8);
+}
+
+/** Built-in major cities whose name or region matches the typed words. */
+export function matchCities(q) {
+  if (norm(q).length < 3) return [];
+  return Object.values(FALLBACK_CITIES)
+    .flat()
+    .filter((c) => wordMatch(q, c.name) || wordMatch(q, c.area))
+    .slice(0, 8);
+}
+
+/**
+ * IQAir may spell a region differently ("Jakarta" vs "DKI Jakarta", "Penang" vs "Pulau Pinang").
+ * Find IQAir's spelling for one of our region names; null if IQAir doesn't list it.
+ */
+export function iqairRegionName(region, iqairRegions) {
+  const n = norm(region);
+  const exact = iqairRegions.find((r) => norm(r) === n);
+  if (exact) return exact;
+  return iqairRegions.find((r) => wordMatch(region, r) || wordMatch(r, region)) || null;
 }
 
 // ---------- IQAir directory (through our server function) ----------

@@ -5,6 +5,7 @@ import { DEFAULT_SYSTEM } from '../lib/solar.js';
 import { planDay, hourRanges, fmtHour } from '../lib/battery.js';
 import { hazeLevel } from '../lib/aqi.js';
 import { SolarChart, SocChart } from './charts.jsx';
+import HazeScene3D from './HazeScene3D.jsx';
 import { useAsync, Loading, DemoBanner, fmtDate } from './common.jsx';
 
 const MAX_PAST = 85;
@@ -157,6 +158,15 @@ export default function SolarPage({ place, engine, settings, setSettings }) {
           </div>
         </div>
       </section>
+
+      <div className="card section">
+        <h2>See the haze over your roof</h2>
+        <p className="lede">
+          A 3D view of terrace homes at {isPast ? 'the' : "the forecast"} haze level for {fmtDate(current.d)}. Drag to look around, or move the
+          slider to see how thicker haze dims the panels.
+        </p>
+        <HazeScene3D aod={L.meanAod} label={`${fmtDate(current.d)} · ${place.name}`} />
+      </div>
 
       <div className="card section">
         <div className="spread">

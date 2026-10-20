@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { searchPlaces } from '../lib/api.js';
 import { TOWNSHIPS } from '../lib/places.js';
-import { matchCountries, getRegions, getCities, locateCity, FALLBACK_CITIES } from '../lib/browse.js';
+import { matchCountries, matchRegions, matchCities, iqairRegionName, wordMatch, getRegions, getCities, locateCity, FALLBACK_CITIES } from '../lib/browse.js';
 
 export function useAsync(fn, deps) {
   const [state, setState] = useState({ loading: true, data: null, error: null });
@@ -63,6 +63,8 @@ export function LocationBar({ place, onChange }) {
   const [busyCity, setBusyCity] = useState('');
   const boxRef = useRef(null);
   const countryMatches = useMemo(() => matchCountries(q), [q]);
+  const regionMatches = useMemo(() => matchRegions(q), [q]);
+  const cityMatches = useMemo(() => matchCities(q), [q]);
 
   useEffect(() => {
     if (q.trim().length < 2) {
@@ -73,11 +75,19 @@ export function LocationBar({ place, onChange }) {
     setOpen(true);
     const id = setTimeout(() => {
       searchPlaces(q)
-        .then((r) => setResults(r.filter((x) => !countryMatches.some((c) => c.name === x.name))))
+        .then((r) =>
+          setResults(
+            r.filter(
+              (x) =>
+                !countryMatches.some((c) => c.name === x.name) &&
+                !cityMatches.some((c) => Math.abs(c.lat - x.lat) < 0.15 && Math.abs(c.lon - x.lon) < 0.15)
+            )
+          )
+        )
         .catch(() => setResults([]));
     }, 300);
     return () => clearTimeout(id);
-  }, [q, countryMatches]);
+  }, [q, countryMatches, cityMatches]);
 
   useEffect(() => {
     const close = (e) => boxRef.current && !boxRef.current.contains(e.target) && setOpen(false);
@@ -108,12 +118,31 @@ export function LocationBar({ place, onChange }) {
       });
   };
 
-  const openRegion = (country, region) => {
+  // Built-in cities in a region, used when IQAir's directory can't help
+  const regionFallback = (country, region, why) => {
+    const fb = (FALLBACK_CITIES[country.code] || []).filter((c) => wordMatch(region, c.area));
+    setBrowse(
+      fb.length
+        ? { country, region, kind: 'fallback', items: fb, loading: false, note: why }
+        : { country, region, kind: 'cities', items: [], loading: false, error: `${why} Type a city name in ${region} instead.` }
+    );
+  };
+
+  const openRegion = (country, region, { fromSearch = false } = {}) => {
     setFilter('');
-    setBrowse({ country, region, kind: 'cities', items: [], loading: true });
-    getCities(country, region)
-      .then((items) => setBrowse({ country, region, kind: 'cities', items, loading: false }))
-      .catch((e) => setBrowse({ country, region, kind: 'cities', items: [], loading: false, error: `Couldn't load cities (${e.message}). Try again in a minute.` }));
+    setBrowse({ country, region, kind: 'cities', items: [], loading: true, fromSearch });
+    // Names from our built-in list may be spelled differently in IQAir's directory
+    const resolve = fromSearch
+      ? getRegions(country).then((list) => iqairRegionName(region, list))
+      : Promise.resolve(region);
+    resolve
+      .then((iqName) => {
+        if (!iqName) return regionFallback(country, region, 'IQAir has no cities listed for this region yet.');
+        return getCities(country, iqName).then((items) =>
+          setBrowse({ country, region: iqName, kind: 'cities', items, loading: false, fromSearch })
+        );
+      })
+      .catch(() => regionFallback(country, region, 'Showing major cities (IQAir directory unavailable).'));
   };
 
   const openCity = (country, region, city) => {
@@ -138,9 +167,9 @@ export function LocationBar({ place, onChange }) {
   };
 
   const shownItems = browse
-    ? browse.items.filter((it) => (typeof it === 'string' ? it : it.name).toLowerCase().includes(filter.toLowerCase()))
+    ? browse.items.filter((it) => !filter.trim() || wordMatch(filter, typeof it === 'string' ? it : `${it.name} ${it.area}`))
     : [];
-  const showSearch = !browse && (countryMatches.length > 0 || results.length > 0);
+  const showSearch = !browse && (countryMatches.length > 0 || regionMatches.length > 0 || cityMatches.length > 0 || results.length > 0);
 
   return (
     <div className="locbar">
@@ -150,7 +179,7 @@ export function LocationBar({ place, onChange }) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onFocus={() => (results.length || countryMatches.length || browse) && setOpen(true)}
-          placeholder="Search a city, or a country like “Indonesia”…"
+          placeholder="Search a city or a country"
           aria-label="Search location"
         />
         {open && showSearch && (
@@ -162,7 +191,23 @@ export function LocationBar({ place, onChange }) {
                 <small>regions & cities ›</small>
               </button>
             ))}
-            {results.length > 0 && countryMatches.length > 0 && <div className="sr-head">Places</div>}
+            {regionMatches.length > 0 && <div className="sr-head">Regions</div>}
+            {regionMatches.map(({ country, region }) => (
+              <button key={`${country.code}-${region}`} onClick={() => openRegion(country, region, { fromSearch: true })}>
+                <span aria-hidden="true">{flag(country.code)}</span> {region}
+                <small>{country.name} · cities ›</small>
+              </button>
+            ))}
+            {cityMatches.length > 0 && <div className="sr-head">Major cities</div>}
+            {cityMatches.map((c) => (
+              <button key={`${c.name}-${c.lat}`} onClick={() => pick(c)}>
+                {c.name}
+                <small>{c.area}</small>
+              </button>
+            ))}
+            {results.length > 0 && (countryMatches.length > 0 || regionMatches.length > 0 || cityMatches.length > 0) && (
+              <div className="sr-head">Other places</div>
+            )}
             {results.map((r) => (
               <button key={`${r.lat},${r.lon}`} onClick={() => pick(r)}>
                 {r.name}
@@ -176,7 +221,7 @@ export function LocationBar({ place, onChange }) {
             <div className="sr-nav">
               <button
                 className="sr-back"
-                onClick={() => (browse.kind === 'cities' ? openCountry(browse.country) : setBrowse(null))}
+                onClick={() => (browse.region && !browse.fromSearch ? openCountry(browse.country) : setBrowse(null))}
                 aria-label="Back"
               >
                 ‹ Back

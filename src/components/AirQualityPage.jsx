@@ -5,6 +5,7 @@ import { computeHazeLoss } from '../lib/model.js';
 import { tryDoeStations, nearestStation, doeLevel, DOE_LEVELS, DOE_ADVICE, DOE_SYMBOLS, DOE_SOURCE_URL } from '../lib/doe.js';
 import { getIqair, IQAIR_POLLUTANTS, IQAIR_URL } from '../lib/iqair.js';
 import { AqiBars } from './charts.jsx';
+import HazeScene3D from './HazeScene3D.jsx';
 import { useAsync, Loading, DemoBanner, fmtTime, fmtDate } from './common.jsx';
 
 const DOE_TO_TIPS = { good: 'good', moderate: 'moderate', unhealthy: 'usg', very: 'very', hazardous: 'hazardous', emergency: 'hazardous' };
@@ -205,6 +206,10 @@ export default function AirQualityPage({ place, engine, go }) {
           </div>
         </div>
       </section>
+
+      <div className="section">
+        <HazeScene3D aod={c.aod ?? 0.3} label={`Right now · ${place.name}`} interactive={false} height={300} />
+      </div>
 
       <div className="grid grid-2 section">
         {st ? (
