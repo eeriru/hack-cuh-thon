@@ -272,3 +272,8 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-
   .hero-aqi .face { font-size: 40px; }
   .card { padding: 16px; }
 }
+
+.scale-labels { position: relative; height: 14px; font-size: 10.5px; opacity: 0.85; margin-top: 3px; font-weight: 600; }
+.scale-labels span { position: absolute; transform: translateX(-50%); }
+.scale-labels span:first-child { transform: none; }
+.scale-labels span:last-child { transform: translateX(-100%); }

@@ -111,4 +111,86 @@ test('tree evaluator walks left/right/missing correctly', () => {
   assert.equal(evalTrees(model, [NaN]), 0.4);
 });
 
+
+// ---------- DOE official readings ----------
+import { readFileSync } from 'node:fs';
+import { parseDoe, parseDoeApi, parseDoeTime, nearestStation, doeLevel } from '../src/lib/doe.js';
+import handler from '../api/doe.js';
+
+const sample = JSON.parse(readFileSync(new URL('./fixtures/doe_sample.json', import.meta.url)));
+const sampleNow = Date.parse('2026-10-20T10:20:00+08:00') / 1000;
+
+test('DOE times are Malaysia local time', () => {
+  assert.equal(parseDoeTime('2026-10-20T10:00:00'), Date.parse('2026-10-20T02:00:00Z') / 1000);
+});
+
+test('DOE API values: numbers kept, flags and blanks dropped', () => {
+  assert.equal(parseDoeApi('55'), 55);
+  assert.equal(parseDoeApi(148), 148);
+  assert.equal(parseDoeApi('&'), null);
+  assert.equal(parseDoeApi(''), null);
+  assert.equal(parseDoeApi('-'), null);
+});
+
+test('DOE payload parses into stations with 24 ordered readings', () => {
+  const st = parseDoe(sample);
+  assert.equal(st.length, 8);
+  const shah = st.find((s) => s.id === 'CA22B');
+  assert.equal(shah.name, 'Shah Alam');
+  assert.equal(shah.state, 'Selangor');
+  assert.equal(shah.readings.length, 24);
+  assert.ok(shah.readings.every((r, i, a) => i === 0 || r.t > a[i - 1].t));
+  const newest = sample.api_table_hourly.find((r) => r.STATION_ID === 'CA22B' && r.DATETIME === '2026-10-20T10:00:00');
+  assert.equal(shah.latest.api, Number(newest.API));
+  assert.equal(shah.readings.filter((r) => r.api === null).length, 1);
+  assert.equal(shah.latest.symbol, '**');
+  assert.throws(() => parseDoe({ nope: 1 }));
+});
+
+test('nearest station skips stale stations and picks the closest', () => {
+  const st = parseDoe(sample);
+  const elmina = { lat: 3.17, lon: 101.47 };
+  const near = nearestStation(st, elmina, { now: sampleNow });
+  assert.equal(near.station.id, 'CA22B');
+  assert.ok(near.distanceKm > 5 && near.distanceKm < 15, `${near.distanceKm}`);
+  const kuantan = { lat: 3.81, lon: 103.33 };
+  assert.equal(nearestStation(st, kuantan, { now: sampleNow }), null); // only a stale station within 60 km
+});
+
+test('DOE status bands', () => {
+  assert.equal(doeLevel(50).label, 'Good');
+  assert.equal(doeLevel(51).label, 'Moderate');
+  assert.equal(doeLevel(150).label, 'Unhealthy');
+  assert.equal(doeLevel(250).label, 'Very unhealthy');
+  assert.equal(doeLevel(301).label, 'Hazardous');
+});
+
+const fakeRes = () => {
+  const r = { headers: {}, code: 0, body: null };
+  r.setHeader = (k, v) => (r.headers[k.toLowerCase()] = v);
+  r.status = (c) => ((r.code = c), r);
+  r.send = (b) => ((r.body = b), r);
+  r.json = (b) => ((r.body = JSON.stringify(b)), r);
+  return r;
+};
+
+await (async () => {
+  // async test
+  const name = 'server function passes DOE data through with caching';
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify(sample), { status: 200 });
+  const res = fakeRes();
+  await handler({ method: 'GET' }, res);
+  assert.equal(res.code, 200);
+  assert.match(res.headers['cache-control'], /s-maxage=600/);
+  assert.equal(JSON.parse(res.body).api_table_hourly.length, 192);
+  globalThis.fetch = async () => new Response('down', { status: 503 });
+  const res2 = fakeRes();
+  await handler({ method: 'GET' }, res2);
+  assert.equal(res2.code, 502);
+  globalThis.fetch = realFetch;
+  passed++;
+  console.log('✓', name);
+})();
+
 console.log(`\n${passed} tests passed`);

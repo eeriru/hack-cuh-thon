@@ -2,8 +2,31 @@ import { useMemo } from 'react';
 import { getPlaceData, addDays, todayMY, localDateOf, dayModelHours } from '../lib/api.js';
 import { aqiLevel, AQI_LEVELS, ADVICE, POLLUTANTS, hazeLevel, WEATHER_CODES } from '../lib/aqi.js';
 import { computeHazeLoss } from '../lib/model.js';
+import { tryDoeStations, nearestStation, doeLevel, DOE_LEVELS, DOE_ADVICE, DOE_SYMBOLS, DOE_SOURCE_URL } from '../lib/doe.js';
 import { AqiBars } from './charts.jsx';
 import { useAsync, Loading, DemoBanner, fmtTime, fmtDate } from './common.jsx';
+
+const DOE_TO_TIPS = { good: 'good', moderate: 'moderate', unhealthy: 'usg', very: 'very', hazardous: 'hazardous', emergency: 'hazardous' };
+
+function DoeScale({ api }) {
+  const segs = [50, 50, 100, 100, 200];
+  const pos = Math.min(100, ((api ?? 0) / 500) * 100);
+  return (
+    <div className="scale-wrap">
+      <div className="scale">
+        {segs.map((w, i) => (
+          <span key={i} style={{ flex: w, background: DOE_LEVELS[i].color }} />
+        ))}
+      </div>
+      <div className="scale-marker" style={{ left: `${pos}%` }} />
+      <div className="scale-labels">
+        {[0, 50, 100, 200, 300, 500].map((v) => (
+          <span key={v} style={{ left: `${(v / 500) * 100}%` }}>{v}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const SCALE_MAX = 300;
 
@@ -34,6 +57,8 @@ export default function AirQualityPage({ place, engine, go }) {
     () => getPlaceData(place, { startDate: addDays(today, -1), endDate: addDays(today, 4) }),
     [place.lat, place.lon, today]
   );
+  const doe = useAsync(() => tryDoeStations(), [today]);
+  const official = useMemo(() => (doe.data ? nearestStation(doe.data, place) : null), [doe.data, place]);
 
   const derived = useMemo(() => {
     if (!data) return null;
@@ -58,35 +83,66 @@ export default function AirQualityPage({ place, engine, go }) {
     return { next, days, solarToday, solarTomorrow };
   }, [data, engine, place, today]);
 
-  if (loading || !data) return <Loading />;
+  if (loading || !data || doe.loading) return <Loading />;
   const c = data.current;
   const lvl = aqiLevel(c.us_aqi);
   const haze = hazeLevel(c.aod);
+  const st = official?.station;
+  const reading = st?.latest;
+  const dl = doeLevel(reading?.api);
+  const tipsKey = st ? DOE_TO_TIPS[dl.key] : lvl.key;
+  const past24 = st ? st.readings.slice(-24) : [];
 
   return (
     <>
       <DemoBanner source={data.source} />
+      {!st && (
+        <div className="banner" role="status">
+          <span aria-hidden="true">ℹ️</span>
+          <span>
+            Official DOE readings could not be loaded right now{doe.data ? ' (no station has reported in the last 6 hours)' : ''}, so the
+            main number below is a model estimate on the US AQI scale. Official readings:{' '}
+            <a href={DOE_SOURCE_URL} target="_blank" rel="noreferrer">MyEQMS (DOE)</a>.
+          </span>
+        </div>
+      )}
       <div className="place-title">
         <h1>{place.name}</h1>
         <span className="sub">{place.area}</span>
         <span className="stamp">
-          Updated {c.time ? fmtTime(c.time, data.offsetSec) : '—'} local time
+          {st ? `DOE reading for ${fmtTime(reading.t, 8 * 3600)}` : `Updated ${c.time ? fmtTime(c.time, data.offsetSec) : '—'} local time`}
         </span>
       </div>
 
       <section className="hero section" aria-label="Current air quality">
-        <div className="hero-aqi" style={{ background: lvl.color, color: lvl.ink }}>
-          <span className="label">US AQI · now</span>
-          <div className="big">
-            <span className="num">{c.us_aqi !== undefined && c.us_aqi !== null ? Math.round(c.us_aqi) : '–'}</span>
-            <span className="cat">{lvl.label}</span>
-            <span className="face" aria-hidden="true">{lvl.face}</span>
+        {st ? (
+          <div className="hero-aqi" style={{ background: dl.color, color: dl.ink }}>
+            <span className="label">Official API · Department of Environment</span>
+            <div className="big">
+              <span className="num">{reading.api}</span>
+              <span className="cat">{dl.label}</span>
+            </div>
+            <span className="main-pol">
+              {DOE_SYMBOLS[reading.symbol] ? `Dominant pollutant: ${DOE_SYMBOLS[reading.symbol]} · ` : ''}
+              Station: {st.name}
+              {st.state ? `, ${st.state}` : ''} ({official.distanceKm < 1 ? '<1' : Math.round(official.distanceKm)} km away)
+            </span>
+            <DoeScale api={reading.api} />
           </div>
-          <span className="main-pol">
-            Main pollutant: {mainPollutant(c)} · {c.pm2_5 !== undefined && c.pm2_5 !== null ? c.pm2_5.toFixed(1) : '–'} µg/m³
-          </span>
-          <AqiScale aqi={c.us_aqi} />
-        </div>
+        ) : (
+          <div className="hero-aqi" style={{ background: lvl.color, color: lvl.ink }}>
+            <span className="label">Model estimate · US AQI · now</span>
+            <div className="big">
+              <span className="num">{c.us_aqi !== undefined && c.us_aqi !== null ? Math.round(c.us_aqi) : '–'}</span>
+              <span className="cat">{lvl.label}</span>
+              <span className="face" aria-hidden="true">{lvl.face}</span>
+            </div>
+            <span className="main-pol">
+              Main pollutant: {mainPollutant(c)} · {c.pm2_5 !== undefined && c.pm2_5 !== null ? c.pm2_5.toFixed(1) : '–'} µg/m³
+            </span>
+            <AqiScale aqi={c.us_aqi} />
+          </div>
+        )}
         <div className="hero-side">
           <div className="stat">
             <div className="k">Haze level</div>
@@ -118,23 +174,50 @@ export default function AirQualityPage({ place, engine, go }) {
       </section>
 
       <div className="grid grid-2 section">
-        <div className="card">
-          <h2>Hourly forecast</h2>
-          <p className="lede">US AQI for the next 24 hours. Hover a bar for details.</p>
-          <AqiBars
-            points={derived.next.map((h) => ({
-              key: h.t,
-              aqi: h.us_aqi,
-              label: fmtTime(h.t, data.offsetSec, { hour: 'numeric' }),
-              sub: fmtTime(h.t, data.offsetSec, { weekday: 'short', hour: 'numeric' }),
-            }))}
-          />
-        </div>
+        {st ? (
+          <div className="card">
+            <h2>Past 24 hours</h2>
+            <p className="lede">
+              Official hourly API at {st.name}. Source:{' '}
+              <a href={DOE_SOURCE_URL} target="_blank" rel="noreferrer">DOE MyEQMS</a>.
+            </p>
+            <AqiBars
+              level={doeLevel}
+              unit="API"
+              ticks={[0, 50, 100, 200, 300, 500]}
+              points={past24.map((r) => ({
+                key: r.t,
+                aqi: r.api,
+                label: fmtTime(r.t, 8 * 3600, { hour: 'numeric' }),
+                sub: fmtTime(r.t, 8 * 3600, { weekday: 'short', hour: 'numeric' }),
+              }))}
+            />
+          </div>
+        ) : (
+          <div className="card">
+            <h2>Hourly forecast</h2>
+            <p className="lede">Model estimate, US AQI, next 24 hours.</p>
+            <AqiBars
+              points={derived.next.map((h) => ({
+                key: h.t,
+                aqi: h.us_aqi,
+                label: fmtTime(h.t, data.offsetSec, { hour: 'numeric' }),
+                sub: fmtTime(h.t, data.offsetSec, { weekday: 'short', hour: 'numeric' }),
+              }))}
+            />
+          </div>
+        )}
         <div className="card">
           <h2>Health advice</h2>
-          <p className="lede">What to do at the current level.</p>
+          {st ? (
+            <p className="lede" style={{ color: 'var(--ink-2)' }}>
+              <b>DOE advice:</b> {DOE_ADVICE[dl.key]}
+            </p>
+          ) : (
+            <p className="lede">What to do at the current level.</p>
+          )}
           <div className="advice">
-            {(ADVICE[lvl.key] || ADVICE.good).map(([k, v]) => (
+            {(ADVICE[tipsKey] || ADVICE.good).map(([k, v]) => (
               <div key={k}>
                 <b>{k}</b>
                 {v}
@@ -147,10 +230,25 @@ export default function AirQualityPage({ place, engine, go }) {
       <div className="card section">
         <div className="spread">
           <div>
-            <h2>Daily forecast</h2>
-            <p className="lede">Worst hour of each day, with temperature range.</p>
+            <h2>Forecast</h2>
+            <p className="lede">
+              Model forecast (Copernicus CAMS) on the US AQI scale — the DOE does not publish forecasts. Worst hour of each day.
+            </p>
           </div>
         </div>
+        {st && (
+          <div style={{ marginBottom: 14 }}>
+            <AqiBars
+              height={140}
+              points={derived.next.map((h) => ({
+                key: h.t,
+                aqi: h.us_aqi,
+                label: fmtTime(h.t, data.offsetSec, { hour: 'numeric' }),
+                sub: fmtTime(h.t, data.offsetSec, { weekday: 'short', hour: 'numeric' }),
+              }))}
+            />
+          </div>
+        )}
         <div className="daily">
           {derived.days.map((d) => {
             const l = aqiLevel(d.max);
@@ -171,7 +269,7 @@ export default function AirQualityPage({ place, engine, go }) {
       <div className="grid grid-2 section">
         <div className="card">
           <h2>Pollutants</h2>
-          <p className="lede">Current concentrations near the ground.</p>
+          <p className="lede">Model estimates of concentrations near the ground (the DOE public feed gives the index only).</p>
           <div className="pollutants">
             {POLLUTANTS.map((p) => (
               <div className="pol" key={p.key} title={p.name}>

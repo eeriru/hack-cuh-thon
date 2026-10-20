@@ -97,14 +97,19 @@ export default function MethodPage({ engine }) {
         <div className="card">
           <h2>Data sources (all free)</h2>
           <ul className="small" style={{ paddingLeft: 18, margin: 0 }}>
-            <li>Air quality and haze: Open-Meteo Air Quality API (Copernicus CAMS forecasts)</li>
+            <li>
+              Current air quality: official Air Pollutant Index (API) from the Department of Environment's MyEQMS hourly feed, nearest
+              station to the chosen place
+            </li>
+            <li>Haze (aerosol optical depth), pollutant estimates and air-quality forecasts: Open-Meteo Air Quality API (Copernicus CAMS)</li>
             <li>Weather and clouds: Open-Meteo Forecast API</li>
             <li>Measured sunlight: Open-Meteo Satellite Radiation API (JMA/JAXA Himawari)</li>
             <li>Place search: Open-Meteo Geocoding API</li>
           </ul>
           <p className="small muted">
-            Air quality is shown on the US AQI scale (the one IQAir uses). Malaysia's official Air Pollutant Index from the
-            Department of Environment uses its own scale, so numbers can differ from DOE readings in the news.
+            The headline number is the DOE's official API, so it matches the readings quoted in the news. The DOE does not publish
+            forecasts or haze depth, so forecasts and the solar model use Copernicus model data, shown on the US AQI scale and
+            labelled as model estimates.
           </p>
         </div>
         <div className="card">

@@ -5,17 +5,17 @@ import { fmtHour } from '../lib/battery.js';
 const W = 720;
 
 /** Hourly AQI bars, coloured by category. points: [{ key, label, aqi, sub }] */
-export function AqiBars({ points, height = 170 }) {
+export function AqiBars({ points, height = 170, level = aqiLevel, unit = 'AQI', ticks: tickList = [0, 50, 100, 150, 200, 300] }) {
   const [hover, setHover] = useState(null);
   const H = height;
   const pad = { l: 30, r: 8, t: 12, b: 26 };
   const max = Math.max(100, ...points.map((p) => p.aqi || 0)) * 1.1;
   const bw = (W - pad.l - pad.r) / Math.max(1, points.length);
   const y = (v) => pad.t + (H - pad.t - pad.b) * (1 - v / max);
-  const ticks = [0, 50, 100, 150, 200, 300].filter((v) => v <= max);
+  const ticks = tickList.filter((v) => v <= max);
   return (
     <div className="chart-box">
-      <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Hourly air quality forecast">
+      <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Hourly air quality">
         {ticks.map((v) => (
           <g key={v}>
             <line x1={pad.l} x2={W - pad.r} y1={y(v)} y2={y(v)} stroke="var(--line)" strokeDasharray={v ? '3 4' : ''} />
@@ -23,7 +23,7 @@ export function AqiBars({ points, height = 170 }) {
           </g>
         ))}
         {points.map((p, i) => {
-          const lvl = aqiLevel(p.aqi);
+          const lvl = level(p.aqi);
           const x = pad.l + i * bw;
           const top = y(p.aqi || 0);
           return (
@@ -50,7 +50,7 @@ export function AqiBars({ points, height = 170 }) {
           className="tip"
           style={{ left: `${((pad.l + (hover + 0.5) * bw) / W) * 100}%`, top: `${(y(points[hover].aqi || 0) / H) * 100}%` }}
         >
-          <b>{points[hover].sub}</b> · AQI {Math.round(points[hover].aqi ?? 0)} · {aqiLevel(points[hover].aqi).short || aqiLevel(points[hover].aqi).label}
+          <b>{points[hover].sub}</b> · {unit} {points[hover].aqi === null || points[hover].aqi === undefined ? 'no reading' : Math.round(points[hover].aqi)} · {level(points[hover].aqi).short || level(points[hover].aqi).label}
         </div>
       )}
     </div>

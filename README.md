@@ -11,13 +11,20 @@ energy efficiency + climate resilience; People pillar: healthier, safer lives).
 
 | Page | What it shows |
 |---|---|
-| **Air quality** | Live US AQI, haze level (aerosol optical depth), health advice, 24-hour and 5-day forecast, six pollutants, today's/tomorrow's solar haze loss |
+| **Air quality** | **Official DOE Air Pollutant Index** from the nearest station, its past 24 hours, DOE health advice, haze level, model forecast (24-hour and 5-day), pollutant estimates, today's/tomorrow's solar haze loss |
 | **Solar haze loss** | Hour-by-hour sunlight with vs without haze, % and kWh lost, day picker (past ~85 days replay real data, next 4 days forecast), satellite reality check for past days, battery & chores plan, editable home settings |
-| **Rankings** | Sime Darby townships or Malaysian cities ranked by air quality or tomorrow's solar loss, plus township-wide MWh / RM / CO₂ impact |
+| **Rankings** | Sime Darby townships or cities ranked by official API or tomorrow's solar loss, all DOE stations ranked, plus township-wide MWh / RM / CO₂ impact |
 | **How it works** | The method, which model is live, data sources, honest limits |
 
-No API keys, no server, no paid services. All data is fetched from free
-[Open-Meteo](https://open-meteo.com) APIs in the browser. If the network fails during a
+No API keys or paid services. Data sources:
+
+- **Current air quality:** the Department of Environment's official Air Pollutant Index, from the
+  public MyEQMS hourly feed (`https://eqms.doe.gov.my/api3/publicportalapims/apitablehourly`). The DOE
+  server doesn't allow browsers on other sites to call it, so `api/doe.js` is a tiny Vercel server
+  function that fetches it and caches it for 10 minutes (`/api/doe`). Locally, `vite.config.js` proxies
+  the same path. If the feed is down, the app says so and falls back to the model estimate.
+- **Forecasts, haze depth, weather, sunlight:** free [Open-Meteo](https://open-meteo.com) APIs, called
+  from the browser. The DOE doesn't publish forecasts, so these are labelled as model estimates. If the network fails during a
 demo, the app switches to a clearly labelled simulated haze week.
 
 ## Deploy to Vercel (free)
@@ -73,7 +80,8 @@ node tests/parity.test.mjs /tmp/model.json /tmp/parity.json
 - Rooftop output is estimated from satellite sunlight. **Next step:** a pilot with real inverter
   data from Sime Darby solar homes to calibrate the model.
 - Tariff rates and the grid emission factor are editable example values; check current TNB rates.
-- US AQI scale (same as IQAir), not the DOE's Air Pollutant Index.
+- The headline reading is the official DOE API; forecasts and pollutant breakdowns are model estimates on the US AQI scale.
+- The DOE feed is public but undocumented, so its format could change. The app degrades gracefully if it does.
 
 ## Project layout
 
@@ -83,6 +91,8 @@ src/lib/model.js      physics baseline, tree evaluator, haze-loss (run A vs run 
 src/lib/battery.js    battery & chores planner
 src/lib/api.js        Open-Meteo calls, data shaping
 src/lib/demo.js       offline simulated haze week
+src/lib/doe.js        official DOE readings: parsing, bands, nearest station
+api/doe.js            Vercel server function that fetches the DOE feed
 src/components/       pages and SVG charts
 training/             Colab notebook + training script
 tests/                core tests + JS/Python parity test
