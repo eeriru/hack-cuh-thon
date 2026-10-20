@@ -14,6 +14,35 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: () => '/api3/publicportalapims/apitablehourly',
         },
+        '/api/places': {
+          target: 'https://api.airvisual.com',
+          changeOrigin: true,
+          rewrite: (path) => {
+            const q = new URLSearchParams(path.split('?')[1] || '');
+            const type = q.get('type') === 'cities' ? 'cities' : 'states';
+            q.delete('type');
+            q.set('key', env.IQAIR_API_KEY || '');
+            return `/v2/${type}?${q.toString()}`;
+          },
+          selfHandleResponse: true,
+          configure: (proxy) => {
+            proxy.on('proxyRes', (proxyRes, req, res) => {
+              let body = '';
+              proxyRes.on('data', (c) => (body += c));
+              proxyRes.on('end', () => {
+                res.setHeader('Content-Type', 'application/json');
+                try {
+                  const j = JSON.parse(body);
+                  if (j.status !== 'success') throw new Error(j.data?.message || 'IQAir error');
+                  res.end(JSON.stringify({ items: j.data.map((d) => d.state || d.city) }));
+                } catch (e) {
+                  res.statusCode = 502;
+                  res.end(JSON.stringify({ error: String(e.message) }));
+                }
+              });
+            });
+          },
+        },
         '/api/iqair': {
           target: 'https://api.airvisual.com',
           changeOrigin: true,

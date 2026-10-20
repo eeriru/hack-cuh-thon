@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { searchPlaces } from '../lib/api.js';
 import { TOWNSHIPS } from '../lib/places.js';
+import { matchCountries, getRegions, getCities, locateCity, FALLBACK_CITIES } from '../lib/browse.js';
 
 export function useAsync(fn, deps) {
   const [state, setState] = useState({ loading: true, data: null, error: null });
@@ -49,34 +50,79 @@ const SearchIcon = () => (
   </svg>
 );
 
+const flag = (code) => String.fromCodePoint(...[...code].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65));
+
 export function LocationBar({ place, onChange }) {
   const [q, setQ] = useState('');
   const [results, setResults] = useState([]);
   const [open, setOpen] = useState(false);
   const [locating, setLocating] = useState(false);
+  // Browsing a country: { country, region?, items, kind: 'regions'|'cities'|'fallback', loading, error }
+  const [browse, setBrowse] = useState(null);
+  const [filter, setFilter] = useState('');
+  const [busyCity, setBusyCity] = useState('');
   const boxRef = useRef(null);
+  const countryMatches = useMemo(() => matchCountries(q), [q]);
 
   useEffect(() => {
     if (q.trim().length < 2) {
       setResults([]);
       return;
     }
+    setBrowse(null);
+    setOpen(true);
     const id = setTimeout(() => {
       searchPlaces(q)
-        .then((r) => {
-          setResults(r);
-          setOpen(true);
-        })
+        .then((r) => setResults(r.filter((x) => !countryMatches.some((c) => c.name === x.name))))
         .catch(() => setResults([]));
     }, 300);
     return () => clearTimeout(id);
-  }, [q]);
+  }, [q, countryMatches]);
 
   useEffect(() => {
     const close = (e) => boxRef.current && !boxRef.current.contains(e.target) && setOpen(false);
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, []);
+
+  const pick = (p) => {
+    onChange(p);
+    setQ('');
+    setBrowse(null);
+    setFilter('');
+    setOpen(false);
+  };
+
+  const openCountry = (country) => {
+    setFilter('');
+    setBrowse({ country, kind: 'regions', items: [], loading: true });
+    getRegions(country)
+      .then((items) => setBrowse({ country, kind: 'regions', items, loading: false }))
+      .catch((e) => {
+        const fb = FALLBACK_CITIES[country.code];
+        setBrowse(
+          fb
+            ? { country, kind: 'fallback', items: fb, loading: false, note: 'Showing major cities (IQAir directory unavailable).' }
+            : { country, kind: 'regions', items: [], loading: false, error: `Couldn't load regions (${e.message}). Type a city name instead, e.g. "${country.name === 'Indonesia' ? 'Pekanbaru' : 'capital city'}".` }
+        );
+      });
+  };
+
+  const openRegion = (country, region) => {
+    setFilter('');
+    setBrowse({ country, region, kind: 'cities', items: [], loading: true });
+    getCities(country, region)
+      .then((items) => setBrowse({ country, region, kind: 'cities', items, loading: false }))
+      .catch((e) => setBrowse({ country, region, kind: 'cities', items: [], loading: false, error: `Couldn't load cities (${e.message}). Try again in a minute.` }));
+  };
+
+  const openCity = (country, region, city) => {
+    setBusyCity(city);
+    locateCity(country, region, city)
+      .then(pick)
+      .catch((e) => setBrowse((b) => ({ ...b, error: e.message })))
+      .finally(() => setBusyCity(''));
+  };
 
   const locate = () => {
     if (!navigator.geolocation) return;
@@ -91,6 +137,11 @@ export function LocationBar({ place, onChange }) {
     );
   };
 
+  const shownItems = browse
+    ? browse.items.filter((it) => (typeof it === 'string' ? it : it.name).toLowerCase().includes(filter.toLowerCase()))
+    : [];
+  const showSearch = !browse && (countryMatches.length > 0 || results.length > 0);
+
   return (
     <div className="locbar">
       <div className="search" ref={boxRef}>
@@ -98,25 +149,76 @@ export function LocationBar({ place, onChange }) {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          onFocus={() => results.length && setOpen(true)}
-          placeholder="Search any town or city…"
+          onFocus={() => (results.length || countryMatches.length || browse) && setOpen(true)}
+          placeholder="Search a city, or a country like “Indonesia”…"
           aria-label="Search location"
         />
-        {open && results.length > 0 && (
+        {open && showSearch && (
           <div className="search-results">
+            {countryMatches.length > 0 && <div className="sr-head">Browse a country</div>}
+            {countryMatches.map((c) => (
+              <button key={c.code} className="sr-country" onClick={() => openCountry(c)}>
+                <span aria-hidden="true">{flag(c.code)}</span> {c.name}
+                <small>regions & cities ›</small>
+              </button>
+            ))}
+            {results.length > 0 && countryMatches.length > 0 && <div className="sr-head">Places</div>}
             {results.map((r) => (
-              <button
-                key={`${r.lat},${r.lon}`}
-                onClick={() => {
-                  onChange(r);
-                  setQ('');
-                  setOpen(false);
-                }}
-              >
+              <button key={`${r.lat},${r.lon}`} onClick={() => pick(r)}>
                 {r.name}
                 <small>{r.area}</small>
               </button>
             ))}
+          </div>
+        )}
+        {open && browse && (
+          <div className="search-results browse">
+            <div className="sr-nav">
+              <button
+                className="sr-back"
+                onClick={() => (browse.kind === 'cities' ? openCountry(browse.country) : setBrowse(null))}
+                aria-label="Back"
+              >
+                ‹ Back
+              </button>
+              <b>
+                {flag(browse.country.code)} {browse.region ? `${browse.region}, ${browse.country.name}` : browse.country.name}
+              </b>
+            </div>
+            {browse.items.length > 10 && (
+              <input
+                className="sr-filter"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder={browse.kind === 'regions' ? 'Filter regions…' : 'Filter cities…'}
+                aria-label="Filter list"
+                autoFocus
+              />
+            )}
+            <div className="sr-list">
+              {browse.loading && <div className="sr-msg">Loading…</div>}
+              {browse.error && <div className="sr-msg">{browse.error}</div>}
+              {browse.note && <div className="sr-msg">{browse.note}</div>}
+              {!browse.loading && !browse.error && shownItems.length === 0 && <div className="sr-msg">Nothing matches.</div>}
+              {shownItems.map((it) =>
+                browse.kind === 'fallback' ? (
+                  <button key={it.name} onClick={() => pick(it)}>
+                    {it.name}
+                    <small>{it.area}</small>
+                  </button>
+                ) : browse.kind === 'regions' ? (
+                  <button key={it} onClick={() => openRegion(browse.country, it)}>
+                    {it}
+                    <small>cities ›</small>
+                  </button>
+                ) : (
+                  <button key={it} onClick={() => openCity(browse.country, browse.region, it)} disabled={!!busyCity}>
+                    {it}
+                    <small>{busyCity === it ? 'Locating…' : browse.region}</small>
+                  </button>
+                )
+              )}
+            </div>
           </div>
         )}
       </div>

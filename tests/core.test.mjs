@@ -238,4 +238,50 @@ await (async () => {
   passed++;
   console.log('✓', name);
 })();
+
+
+// ---------- country browsing ----------
+import { matchCountries, FALLBACK_CITIES } from '../src/lib/browse.js';
+import placesHandler from '../api/places.js';
+
+test('typing a country name offers that country', () => {
+  assert.equal(matchCountries('Indonesia')[0].code, 'ID');
+  assert.equal(matchCountries('indon')[0].code, 'ID');
+  assert.equal(matchCountries('Singapura')[0].code, 'SG');
+  assert.equal(matchCountries('USA')[0].iqairName, 'USA');
+  assert.equal(matchCountries('Shah Alam').length, 0);
+  assert.ok(FALLBACK_CITIES.ID.length >= 10 && FALLBACK_CITIES.ID.every((c) => c.lat < 7 && c.lat > -11));
+});
+
+await (async () => {
+  const name = 'places function lists regions and cities from IQAir';
+  const realFetch = globalThis.fetch;
+  process.env.IQAIR_API_KEY = 'k';
+  let url = '';
+  globalThis.fetch = async (u) => {
+    url = u;
+    return new Response(JSON.stringify({ status: 'success', data: [{ state: 'Riau' }, { state: 'Jakarta' }] }), { status: 200 });
+  };
+  let res = fakeRes();
+  await placesHandler({ method: 'GET', query: { type: 'states', country: 'Indonesia' } }, res);
+  assert.equal(res.code, 200);
+  assert.deepEqual(JSON.parse(res.body).items, ['Riau', 'Jakarta']);
+  assert.match(url, /\/v2\/states\?country=Indonesia&key=k/);
+  assert.match(res.headers['cache-control'], /s-maxage=86400/);
+  globalThis.fetch = async (u) => {
+    url = u;
+    return new Response(JSON.stringify({ status: 'success', data: [{ city: 'Pekanbaru' }] }), { status: 200 });
+  };
+  res = fakeRes();
+  await placesHandler({ method: 'GET', query: { type: 'cities', country: 'Indonesia', state: 'Riau' } }, res);
+  assert.deepEqual(JSON.parse(res.body).items, ['Pekanbaru']);
+  assert.match(url, /\/v2\/cities\?state=Riau&country=Indonesia/);
+  res = fakeRes();
+  await placesHandler({ method: 'GET', query: { type: 'cities', country: 'Indonesia' } }, res);
+  assert.equal(res.code, 400);
+  globalThis.fetch = realFetch;
+  delete process.env.IQAIR_API_KEY;
+  passed++;
+  console.log('✓', name);
+})();
 console.log(`\n${passed} tests passed`);

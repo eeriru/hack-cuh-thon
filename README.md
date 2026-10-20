@@ -40,6 +40,13 @@ demo, the app switches to a clearly labelled simulated haze week.
 
 Or from a terminal: `npm i -g vercel && vercel`.
 
+## Location search
+
+Type a town (any country) to search by name, or type a **country** (e.g. "Indonesia", "Singapura",
+"Thailand") to browse it region by region, then city by city — the same directory IQAir uses
+(`api/places.js`, cached for a day). If the IQAir directory is unavailable, major Southeast Asian
+cities are listed from a built-in list instead.
+
 ## Connect IQAir (free, 5 minutes)
 
 1. Sign up at [dashboard.iqair.com](https://dashboard.iqair.com) and create an API key on the free
@@ -111,6 +118,8 @@ src/lib/demo.js       offline simulated haze week
 src/lib/doe.js        official DOE readings: parsing, bands, nearest station
 api/doe.js            Vercel server function that fetches the DOE feed
 api/iqair.js          Vercel server function that calls IQAir with your secret key
+api/places.js         Vercel server function: IQAir's country → region → city directory
+src/lib/browse.js     country matching, browsing and backup city list
 src/lib/iqair.js      IQAir reading in the browser
 src/components/       pages and SVG charts
 training/             Colab notebook + training script
