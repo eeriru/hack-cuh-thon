@@ -5,6 +5,7 @@ import WeatherPage from './components/WeatherPage.jsx';
 import RankingsPage from './components/RankingsPage.jsx';
 import MethodPage from './components/MethodPage.jsx';
 import { LocationBar } from './components/common.jsx';
+import { Welcome } from './components/Friendly.jsx';
 import { loadEngine } from './lib/model.js';
 import { DEFAULT_HOME } from './lib/battery.js';
 import { DEFAULT_PLACE } from './lib/places.js';
@@ -90,6 +91,7 @@ export default function App() {
       </header>
       <main className="shell">
         {(tab === 'air' || tab === 'weather' || tab === 'solar') && <LocationBar place={place} onChange={setPlace} />}
+        {(tab === 'air' || tab === 'weather' || tab === 'solar') && <Welcome go={go} />}
         {tab === 'weather' && <WeatherPage place={place} engine={engine} settings={settings} go={go} />}
         {tab === 'air' && <AirQualityPage place={place} engine={engine} go={go} />}
         {tab === 'solar' && <SolarPage place={place} engine={engine} settings={settings} setSettings={setSettings} go={go} />}

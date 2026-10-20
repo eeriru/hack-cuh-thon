@@ -72,6 +72,14 @@ npm run dev        # http://localhost:5173
 npm test           # core model tests
 ```
 
+## Made to be easy to read
+
+- Every main page starts with **In short**: two to four plain sentences (what's happening, what to do, what's coming).
+- Tap any **ⓘ** for a plain-language explanation of a term (AQI vs API, kWh, haze thickness, heat index…). Texts live in `src/lib/glossary.js`.
+- Detail most people don't need (hour-by-hour charts, settings, formulas) is folded away under "More" sections.
+- First-time visitors get a short welcome card (dismissed once, remembered in the browser).
+- The summary sentences are generated in `src/lib/summary.js` and covered by tests.
+
 ## Weather calculations (`src/lib/weather.js`)
 
 - Heat index: NOAA (Rothfusz) from temperature and humidity; heat-stress bands from NOAA.

@@ -350,4 +350,52 @@ test('rain washes the panels: soiling resets after a wet day', () => {
   assert.ok(wetLongAgo.pct > wetYesterday.pct);
   assert.equal(rainByDate(mk(4), 8 * 3600).get('2026-10-14'), 12);
 });
+// ---------- plain-language summaries ----------
+import { airSummary, weatherSummary, solarSummary } from '../src/lib/summary.js';
+
+test('air summary: status, what to do, and forecast in plain words', () => {
+  const items = airSummary({
+    iq: { aqius: 161, city: 'Shah Alam' },
+    iqLevel: { key: 'unhealthy', label: 'Unhealthy' },
+    doe: { api: 144, station: 'Shah Alam' },
+    doeLevel: { key: 'usg', label: 'Unhealthy' },
+    days: [{ label: 'Today', max: 170 }, { label: 'Wednesday', max: 140 }, { label: 'Thursday', max: 80 }],
+  });
+  assert.match(items[0].text, /The air is unhealthy right now \(IQAir 161, official DOE reading 144\)/);
+  assert.match(items[1].text, /N95/);
+  assert.match(items[2].text, /improve .* by Thursday/);
+  assert.equal(airSummary({ iq: null, doe: null, iqLevel: {}, doeLevel: {} }).length, 0);
+});
+
+test('weather summary mentions heat, the rainy day and the best solar day', () => {
+  const items = weatherSummary({
+    now: { temp: 31, feels: 37, rh: 75, uv: 9 },
+    heat: { key: 'extreme', label: 'Extreme caution' },
+    days: [
+      { label: 'Today', rain: 0, solar: 18 },
+      { label: 'Wednesday', rain: 24, code: 95, solar: 12 },
+      { label: 'Saturday', rain: 0, solar: 24.5 },
+    ],
+  });
+  const text = items.map((i) => i.text).join(' | ');
+  assert.match(text, /Hot and humid: 31°C, feels like 37°C/);
+  assert.match(text, /Heavy rain expected on Wednesday \(about 24 mm\)/);
+  assert.match(text, /UV is very high/);
+  assert.match(text, /Best solar day this week: Saturday/);
+});
+
+test('solar summary: output, value, share of home use, main cause and tip', () => {
+  const items = solarSummary({
+    day: { label: 'today', final: 19.5, ideal: 37, hazePct: 10, biggest: { key: 'clouds', label: 'Clouds & rain', kwh: 5.7 }, valueRm: 7.3 },
+    days: [{ label: 'today', final: 19.5 }, { label: 'Saturday', final: 24.5 }, { label: 'Wednesday', final: 12 }],
+    dailyUse: 22,
+    tip: 'Tip: run the washing machine 11am–1pm.',
+  });
+  const text = items.map((i) => i.text).join(' | ');
+  assert.match(text, /will make about 20 kWh today — worth around RM 7, about 89% of a typical day's home use/);
+  assert.match(text, /clouds & rain take the most \(5\.7 kWh\); haze cuts 10%/);
+  assert.match(text, /best Saturday \(25 kWh\), weakest Wednesday \(12 kWh\)/);
+  assert.match(text, /washing machine/);
+});
+
 console.log(`\n${passed} tests passed`);

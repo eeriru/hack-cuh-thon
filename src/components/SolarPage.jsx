@@ -12,6 +12,8 @@ import HazeScene3D from './HazeScene3D.jsx';
 import AirNow from './AirNow.jsx';
 import { TOWNSHIPS } from '../lib/places.js';
 import { useAsync, Loading, DemoBanner, fmtDate } from './common.jsx';
+import { InShort, Tip, More } from './Friendly.jsx';
+import { solarSummary } from '../lib/summary.js';
 
 const MAX_PAST = 85;
 const MAX_AHEAD = 6; // a 7-day solar forecast (today + 6)
@@ -161,9 +163,33 @@ export default function SolarPage({ place, engine, settings, setSettings, go }) 
       <div className="place-title">
         <h1>Solar forecast</h1>
         <span className="sub">
-          {place.name} · {settings.kwp} kW rooftop · {engine.kind === 'trained' ? 'trained AI model' : 'physics baseline model'}
+          {place.name} · estimates for a {settings.kwp} kW rooftop
+          <Tip term="kwp" label="What is kW / kWp?" />
         </span>
       </div>
+
+      <InShort
+        title={`In short · ${isPast ? fmtDate(current.d, { weekday: 'long', day: 'numeric', month: 'short' }) : dayWord === 'today' ? 'today' : dayWord.replace(/^on /, '')}`}
+        items={solarSummary({
+          day: {
+            label: dayWord,
+            final: B.final,
+            ideal: B.ideal,
+            hazePct: L.lossPct,
+            biggest: B.biggest,
+            valueRm: B.final * avgRate,
+          },
+          days: days
+            .filter((x) => x.d >= today)
+            .map((x) => ({ label: x.d === today ? 'today' : fmtDate(x.d, { weekday: 'long' }), final: x.breakdown.final })),
+          dailyUse: home.dailyKwh,
+          isPast,
+          tip:
+            plan && plan.flexWhy === 'sunniest' && !isPast
+              ? `Tip: run the washing machine and water heater ${hourRanges(plan.flexHours)}, the sunniest hours.`
+              : null,
+        })}
+      />
 
       <AirNow place={place} go={go} />
 
@@ -174,12 +200,10 @@ export default function SolarPage({ place, engine, settings, setSettings, go }) 
             Your panels {isPast ? 'made' : 'will make'} <em>{B.final.toFixed(1)} kWh</em> {dayWord}.
           </h2>
           <p>
-            That is {B.performancePct.toFixed(0)}% of the ideal {B.ideal.toFixed(1)} kWh. Biggest loss after equipment:{' '}
-            <b style={{ color: 'var(--paper)' }}>{B.biggest.label.toLowerCase()}</b> ({Math.max(0, B.biggest.kwh).toFixed(1)} kWh).{' '}
-            {L.lossPct >= 1
-              ? `${haze.label} ${isPast ? 'cut' : 'cuts'} output by ${L.lossPct.toFixed(0)}% (AOD ${L.meanAod.toFixed(2)}).`
-              : 'Haze is barely a factor.'}{' '}
-            Worth about RM {(B.final * avgRate).toFixed(2)} of electricity.
+            That's {B.performancePct.toFixed(0)}% of the ideal
+            <Tip term="ideal" label="What is ideal output?" /> and worth about RM {(B.final * avgRate).toFixed(2)} of electricity
+            <Tip term="kwh" label="What is a kWh?" />. The biggest loss is <b style={{ color: 'var(--paper)' }}>{B.biggest.label.toLowerCase()}</b>
+            {L.lossPct >= 1 ? `; haze ${isPast ? 'took' : 'takes'} ${L.lossPct.toFixed(0)}%` : '; haze is barely a factor'}.
           </p>
         </div>
         <div className="headline-stats">
@@ -191,12 +215,19 @@ export default function SolarPage({ place, engine, settings, setSettings, go }) 
             </div>
           </div>
           <div className="hs">
-            <div className="k">Lost to haze</div>
+            <div className="k">
+              Lost to haze
+              <Tip term="hazeLoss" label="How is haze loss measured?" />
+            </div>
             <div className="v">
               {L.lossKwh.toFixed(1)}
               <small>kWh · {L.lossPct.toFixed(0)}%</small>
             </div>
-            {plan && <div className="k">Your bill: +RM {plan.hazeCostRm.toFixed(2)}</div>}
+            {plan && (
+              <div className="k">
+                {plan.hazeCostRm >= 0.01 ? `Adds RM ${plan.hazeCostRm.toFixed(2)} to your bill` : 'No extra cost on your bill today'}
+              </div>
+            )}
           </div>
           <div className="hs">
             <div className="k">Weather</div>
@@ -217,33 +248,6 @@ export default function SolarPage({ place, engine, settings, setSettings, go }) 
           </div>
         </div>
       </section>
-
-      <div className="card section">
-        <h2>Where your solar goes</h2>
-        <p className="lede">
-          From the ideal output of a {settings.kwp} kW system to what it {isPast ? 'made' : 'will make'} {dayWord}. Hover a row for how it is calculated.
-        </p>
-        <LossBreakdown breakdown={B} soil={current.soil} />
-        {!current.hazeForecast && (
-          <p className="small muted" style={{ marginTop: 10 }}>
-            No haze forecast this far ahead, so normal haze is assumed for this day.
-          </p>
-        )}
-      </div>
-
-      <div className="card section">
-        <h2>See the haze over your roof</h2>
-        <p className="lede">
-          A 3D view of terrace homes at {isPast ? 'the' : "the forecast"} haze level for {fmtDate(current.d)}. Drag to look around, or move the
-          slider to see how thicker haze dims the panels.
-        </p>
-        <HazeScene3D
-          aod={L.meanAod}
-          shareForAod={shareForAod}
-          label={`${fmtDate(current.d)} · ${place.name}`}
-          signTitle={TOWNSHIPS.some((t) => t.name === place.name) ? place.name : null}
-        />
-      </div>
 
       <div className="card section">
         <div className="spread">
@@ -281,7 +285,8 @@ export default function SolarPage({ place, engine, settings, setSettings, go }) 
                 <small> kWh</small>
               </div>
               <div className="small muted">
-                haze −{loss.lossPct.toFixed(0)}%{wx.rain ? ` · ${wx.rain.toFixed(0)} mm` : ''}
+                {loss.lossPct >= 0.5 ? `haze −${loss.lossPct.toFixed(0)}%` : 'no haze'}
+                {wx.rain >= 0.5 ? ` · rain ${wx.rain.toFixed(0)} mm` : ''}
               </div>
             </button>
           ))}
@@ -289,7 +294,37 @@ export default function SolarPage({ place, engine, settings, setSettings, go }) 
       </div>
 
       <div className="card section">
-        <h2>Sunlight on your roof, hour by hour</h2>
+        <h2>What's reducing your solar?</h2>
+        <p className="lede">
+          Start from the best possible day at the top; each row is something that takes power away. The yellow bar at the bottom is what you
+          {isPast ? ' got' : "'ll get"}.
+        </p>
+        <LossBreakdown breakdown={B} soil={current.soil} />
+        {!current.hazeForecast && (
+          <p className="small muted" style={{ marginTop: 10 }}>
+            No haze forecast this far ahead, so normal haze is assumed for this day.
+          </p>
+        )}
+      </div>
+
+      <div className="card section">
+        <h2>See the haze over your roof</h2>
+        <p className="lede">
+          A 3D view of terrace homes at {isPast ? 'the' : "the forecast"} haze level for {fmtDate(current.d)}. Drag to look around, or move the
+          slider to see how thicker haze dims the panels.
+        </p>
+        <HazeScene3D
+          aod={L.meanAod}
+          shareForAod={shareForAod}
+          label={`${fmtDate(current.d)} · ${place.name}`}
+          signTitle={TOWNSHIPS.some((t) => t.name === place.name) ? place.name : null}
+        />
+      </div>
+
+      {plan && <PlanCard plan={plan} home={dayHome} isPast={isPast} weekend={weekend && home.tariff.mode === 'tou'} />}
+
+      <More title="Hour-by-hour sunlight" hint="See exactly when the haze takes power, and check against satellite measurements">
+      <div className="card">
         <p className="lede">The hatched band is the sunlight the haze took away. Hover for the inputs the model used each hour.</p>
         <SolarChart rows={L.rows} satellite={sat.data} />
         <div className="legend">
@@ -307,11 +342,10 @@ export default function SolarPage({ place, engine, settings, setSettings, go }) 
           </p>
         )}
       </div>
+      </More>
 
-      {plan && <PlanCard plan={plan} home={dayHome} isPast={isPast} weekend={weekend && home.tariff.mode === 'tou'} />}
-
-      <div className="card section">
-        <h2>Your home</h2>
+      <More title="Your home settings" hint={`${settings.kwp} kW solar · ${settings.batteryKwh} kWh battery · ${settings.dailyKwh} kWh/day · ${settings.home.tariff.mode === 'tou' ? 'time-of-use' : 'flat'} tariff`}>
+      <div className="card">
         <p className="lede">Change these to match your house. Saved in this browser.</p>
         <div className="settings">
           <NumField label="Solar size" unit="kWp" value={settings.kwp} min={1} max={20} step={0.5} onChange={(v) => setSettings({ ...settings, kwp: v })} />
@@ -338,6 +372,7 @@ export default function SolarPage({ place, engine, settings, setSettings, go }) 
           )}
         </div>
       </div>
+      </More>
     </>
   );
 }
@@ -380,7 +415,10 @@ function PlanCard({ plan, home, isPast, weekend }) {
 
   return (
     <div className="card section">
-      <h2>Battery & chores plan {isPast ? '(what would have helped)' : ''}</h2>
+      <h2>
+        Save money with a smarter day {isPast ? '(what would have helped)' : ''}
+        <Tip term="battery" />
+      </h2>
       <p className="lede">
         We replay the day hour by hour with your predicted (hazy) solar output and try every combination of chore timing, battery reserve
         and off-peak top-up, keeping the cheapest. Household demand is simulated from a typical Malaysian terrace home.

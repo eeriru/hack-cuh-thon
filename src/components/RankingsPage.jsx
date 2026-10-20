@@ -8,6 +8,7 @@ import { getIqair, iqairPausedUntil } from '../lib/iqair.js';
 import { tryDoeStations, nearestStation, doeLevel, DOE_SYMBOLS, DOE_SOURCE_URL } from '../lib/doe.js';
 import { TOWNSHIPS, CITIES } from '../lib/places.js';
 import { useAsync, Loading, DemoBanner, fmtTime } from './common.jsx';
+import { InShort, Tip } from './Friendly.jsx';
 
 // IQAir's free plan allows 5 lookups a minute. Readings go through the shared queue in
 // lib/iqair.js (spaced out, paused when IQAir is busy, remembered for 30 minutes) and
@@ -106,8 +107,28 @@ export default function RankingsPage({ engine, settings, onPick }) {
       )}
       <div className="place-title">
         <h1>Rankings</h1>
-        <span className="sub">Air quality now from IQAir and the DOE, and tomorrow's solar output and haze loss</span>
+        <span className="sub">Compare places: air quality right now, and how much solar power each will make tomorrow</span>
       </div>
+      {group !== 'stations' && rows.length > 0 && (
+        <InShort
+          items={(() => {
+            const withApi = rows.filter((r) => r.api !== null);
+            const worstAir = withApi.length ? withApi.reduce((a, b) => (b.api > a.api ? b : a)) : null;
+            const bestAir = withApi.length ? withApi.reduce((a, b) => (b.api < a.api ? b : a)) : null;
+            const bestSun = rows.reduce((a, b) => (b.output > a.output ? b : a));
+            const hazy = rows.reduce((a, b) => (b.loss.lossPct > a.loss.lossPct ? b : a));
+            return [
+              worstAir && {
+                icon: '😷',
+                text: `Worst air now: ${worstAir.place.name} (official API ${worstAir.api}, ${doeLevel(worstAir.api).label.toLowerCase()}). Cleanest: ${bestAir.place.name} (${bestAir.api}).`,
+              },
+              { icon: '⚡', text: `Most solar tomorrow: ${bestSun.place.name}, about ${bestSun.output.toFixed(0)} kWh for a ${settings.kwp} kW system.` },
+              hazy.loss.lossPct >= 3 && { icon: '🌫️', text: `Haze hits ${hazy.place.name} hardest tomorrow (−${hazy.loss.lossPct.toFixed(0)}% solar).` },
+              { icon: '👆', text: 'Tap any row to see that place in detail.' },
+            ];
+          })()}
+        />
+      )}
       <div className="spread section">
         <div className="chips">
           <button className={`chip ${group === 'townships' ? 'active' : ''}`} onClick={() => setGroup('townships')}>Sime Darby townships</button>
@@ -138,9 +159,18 @@ export default function RankingsPage({ engine, settings, onPick }) {
                   <tr>
                     <th>#</th>
                     <th>{group === 'townships' ? 'Township' : 'City'}</th>
-                    <th>DOE API (official)</th>
-                    <th>IQAir US AQI</th>
-                    <th>Solar tomorrow</th>
+                    <th>
+                      DOE API (official)
+                      <Tip term="doeApi" />
+                    </th>
+                    <th>
+                      IQAir US AQI
+                      <Tip term="usAqi" />
+                    </th>
+                    <th>
+                      Solar tomorrow
+                      <Tip term="kwh" label="What is a kWh?" />
+                    </th>
                     <th style={{ minWidth: 170 }}>Lost to haze ({settings.kwp} kW)</th>
                   </tr>
                 </thead>

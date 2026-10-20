@@ -6,6 +6,8 @@ import { lossBreakdown, soilingForDate } from '../lib/losses.js';
 import { tryDoeStations, nearestStation, doeLevel, DOE_LEVELS, DOE_ADVICE, DOE_SYMBOLS, DOE_SOURCE_URL } from '../lib/doe.js';
 import { getIqair, IQAIR_POLLUTANTS, IQAIR_URL, IQAIR_CONDITIONS } from '../lib/iqair.js';
 import { AqiBars } from './charts.jsx';
+import { InShort, Tip } from './Friendly.jsx';
+import { airSummary } from '../lib/summary.js';
 import HazeScene3D from './HazeScene3D.jsx';
 import { TOWNSHIPS } from '../lib/places.js';
 import { useAsync, Loading, fmtTime } from './common.jsx';
@@ -106,6 +108,15 @@ export default function AirQualityPage({ place, engine, go }) {
         </span>
       </div>
 
+      <InShort
+        items={airSummary({
+          iq: iqa,
+          iqLevel: il,
+          doe: st ? { api: reading.api, station: st.name } : null,
+          doeLevel: { ...dl, key: st ? DOE_TO_TIPS[dl.key] || dl.key : null },
+        })}
+      />
+
       {!iqa && !st ? (
         <div className="card section">
           <h2>Air quality readings unavailable</h2>
@@ -120,7 +131,10 @@ export default function AirQualityPage({ place, engine, go }) {
         <section className="hero section" aria-label="Current air quality">
           {iqa ? (
             <div className="hero-aqi" style={{ background: il.color, color: il.ink }}>
-              <span className="label">US AQI · IQAir · {iqa.city}</span>
+              <span className="label">
+                US AQI · IQAir · {iqa.city}
+                <Tip term="usAqi" />
+              </span>
               <div className="big">
                 <span className="num">{Math.round(iqa.aqius)}</span>
                 <span className="cat">{il.label}</span>
@@ -133,7 +147,10 @@ export default function AirQualityPage({ place, engine, go }) {
             </div>
           ) : (
             <div className="hero-aqi" style={{ background: dl.color, color: dl.ink }}>
-              <span className="label">Official API · Department of Environment</span>
+              <span className="label">
+                Official API · Department of Environment
+                <Tip term="doeApi" />
+              </span>
               <div className="big">
                 <span className="num">{reading.api}</span>
                 <span className="cat">{dl.label}</span>
@@ -148,7 +165,10 @@ export default function AirQualityPage({ place, engine, go }) {
           <div className="hero-side">
             {st && (
               <div className="stat" style={{ gridColumn: '1 / -1' }}>
-                <div className="k">Official DOE API · {st.name}</div>
+                <div className="k">
+                  Official DOE API · {st.name}
+                  <Tip term="doeApi" />
+                </div>
                 <div className="v">
                   <span className="badge" style={{ background: dl.color, color: dl.ink, fontSize: 20, padding: '2px 10px' }}>{reading.api}</span>{' '}
                   {dl.label}
@@ -210,8 +230,11 @@ export default function AirQualityPage({ place, engine, go }) {
       {(iqa || st) && (
         <div className="grid grid-2 section">
           <div className="card">
-            <h2>IQAir and DOE side by side</h2>
-            <p className="lede">Two trusted sources, two scales. Both are shown so you can compare.</p>
+            <h2>
+              IQAir and DOE side by side
+              <Tip term="twoScales" label="Why are the numbers different?" />
+            </h2>
+            <p className="lede">Two trusted sources, two scales. Look at the colour and the word, not just the number.</p>
             <div className="compare">
               <div className="cmp">
                 <div className="cmp-src">IQAir · US AQI</div>

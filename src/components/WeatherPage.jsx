@@ -6,10 +6,15 @@ import { lossBreakdown, soilingForDate } from '../lib/losses.js';
 import { heatIndex, dewPoint, heatRisk, uvLevel, rainLevel, compass, weatherIcon, WEATHER_TEXT } from '../lib/weather.js';
 import { WeatherChart } from './charts.jsx';
 import { useAsync, Loading, DemoBanner, fmtTime, fmtDate } from './common.jsx';
+import { InShort, Tip, More } from './Friendly.jsx';
+import { weatherSummary } from '../lib/summary.js';
 
-const Stat = ({ k, v, unit, sub, tone }) => (
+const Stat = ({ k, v, unit, sub, tone, tip }) => (
   <div className="stat">
-    <div className="k">{k}</div>
+    <div className="k">
+      {k}
+      {tip && <Tip term={tip} />}
+    </div>
     <div className="v">
       {v}
       {unit && <small>{unit}</small>}
@@ -72,6 +77,21 @@ export default function WeatherPage({ place, engine, settings, go }) {
         <span className="stamp">Updated {c.time ? fmtTime(c.time, data.offsetSec) : '—'} local time</span>
       </div>
 
+      <InShort
+        items={weatherSummary({
+          now: { temp: c.temp, feels: c.feels ?? hi, rh: c.rh, uv: c.uv, rainNext24 },
+          heat: risk,
+          days: derived.days.map((d) => ({
+            label: d.ds === today ? 'Today' : fmtDate(d.ds, { weekday: 'long' }),
+            rain: d.rain,
+            rainChance: d.rainChance,
+            code: d.weather_code,
+            tmax: d.tmax,
+            solar: d.solar,
+          })),
+        })}
+      />
+
       <section className="wx-hero section" aria-label="Weather now">
         <div className={`wx-now ${mood}`}>
           <span className="label">Now</span>
@@ -84,16 +104,16 @@ export default function WeatherPage({ place, engine, settings, go }) {
           </div>
           <span className="cond">{WEATHER_TEXT[c.weather_code] || '—'}</span>
           <span className="feels">
-            Feels like {fmt(c.feels ?? hi)}°C
+            Feels like {fmt(c.feels ?? hi)}°C<Tip term="feelsLike" />
             {todayDaily ? ` · today ${fmt(todayDaily.tmin)}–${fmt(todayDaily.tmax)}°C` : ''}
           </span>
         </div>
         <div className="wx-stats">
-          <Stat k="Heat index" v={fmt(hi)} unit="°C" sub={risk.label} tone={risk.tone} />
-          <Stat k="Humidity" v={fmt(c.rh)} unit="%" sub={dew !== null ? `Dew point ${fmt(dew)}°C${dew >= 24 ? ' · muggy' : ''}` : null} />
-          <Stat k="UV index" v={fmt(c.uv, 1)} sub={uv.label} tone={uv.tone} />
+          <Stat k="Heat index" tip="heatIndex" v={fmt(hi)} unit="°C" sub={risk.label} tone={risk.tone} />
+          <Stat k="Humidity" tip="dewPoint" v={fmt(c.rh)} unit="%" sub={dew !== null ? `Dew point ${fmt(dew)}°C${dew >= 24 ? ' · muggy' : ''}` : null} />
+          <Stat k="UV index" tip="uv" v={fmt(c.uv, 1)} sub={uv.label} tone={uv.tone} />
           <Stat k="Wind" v={fmt(c.wind)} unit="km/h" sub={`${compass(c.windDir)}${c.gust ? ` · gusts ${fmt(c.gust)} km/h` : ''}`} />
-          <Stat k="Rain next 24 h" v={fmt(rainNext24, 1)} unit="mm" sub={`Up to ${Math.round(maxChance)}% chance`} />
+          <Stat k="Rain next 24 h" tip="rainChance" v={fmt(rainNext24, 1)} unit="mm" sub={`Up to ${Math.round(maxChance)}% chance`} />
           <Stat k="Cloud cover" v={fmt(c.cloud)} unit="%" sub={todayDaily?.sunset ? `Sunset ${fmtTime(todayDaily.sunset, data.offsetSec)}` : null} />
         </div>
       </section>
@@ -127,7 +147,10 @@ export default function WeatherPage({ place, engine, settings, go }) {
         <div className="spread">
           <div>
             <h2>7-day forecast</h2>
-            <p className="lede">Weather from the Open-Meteo forecast, with the solar output your {settings.kwp} kW system can expect each day.</p>
+            <p className="lede">
+              The week ahead, with how much power your {settings.kwp} kW solar system can expect each day.
+              <Tip term="kwh" label="What is a kWh?" />
+            </p>
           </div>
           <button className="chip" onClick={() => go('solar')}>Solar details ›</button>
         </div>
@@ -164,9 +187,8 @@ export default function WeatherPage({ place, engine, settings, go }) {
         </div>
       </div>
 
-      <div className="grid grid-2 section">
+      <More title="How these numbers are calculated" hint="Heat index, dew point, warnings, UV, rain and solar">
         <div className="card">
-          <h2>How we calculate</h2>
           <ul className="small" style={{ paddingLeft: 18, margin: 0, color: 'var(--ink-2)' }}>
             <li><b>Heat index</b>: NOAA formula from temperature and humidity (how hot it feels in the shade).</li>
             <li><b>Dew point</b>: Magnus formula; above 24°C the air feels muggy.</li>
@@ -175,17 +197,7 @@ export default function WeatherPage({ place, engine, settings, go }) {
             <li><b>Solar per day</b>: the same model as the Solar forecast page, including clouds, heat, haze and dust.</li>
           </ul>
         </div>
-        <div className="card">
-          <h2>Today at a glance</h2>
-          <ul className="small" style={{ paddingLeft: 18, margin: 0, color: 'var(--ink-2)' }}>
-            {todayDaily && <li>Temperature {fmt(todayDaily.tmin)}–{fmt(todayDaily.tmax)}°C, feeling up to {fmt(todayDaily.feelsMax)}°C.</li>}
-            {todayDaily && <li>{rainLevel(todayDaily.rain).label} expected ({fmt(todayDaily.rain, 1)} mm, {Math.round(todayDaily.rainChance ?? 0)}% chance).</li>}
-            {todayDaily && <li>UV peaks at {fmt(todayDaily.uvMax)} ({uvLevel(todayDaily.uvMax).label.toLowerCase()}): {todayDaily.uvMax >= 8 ? 'cover up and use sunscreen at midday' : 'normal sun care'}.</li>}
-            {todayDaily?.solar !== null && todayDaily?.solar !== undefined && <li>Your panels should make about {todayDaily.solar.toFixed(1)} kWh.</li>}
-            {todayDaily?.sunrise && <li>Sunrise {fmtTime(todayDaily.sunrise, data.offsetSec)}, sunset {fmtTime(todayDaily.sunset, data.offsetSec)}.</li>}
-          </ul>
-        </div>
-      </div>
+      </More>
     </>
   );
 }

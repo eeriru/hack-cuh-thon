@@ -1,4 +1,7 @@
 // "Where your solar goes": a waterfall from the ideal output down to what the panels make.
+import { Tip } from './Friendly.jsx';
+
+const TIP = { heat: 'heat', haze: 'hazeLoss', dust: 'dust' };
 
 const COLORS = {
   system: '#9aa3b2',
@@ -22,7 +25,10 @@ export default function LossBreakdown({ breakdown, soil }) {
     <div className="waterfall" role="table" aria-label="Solar losses from ideal to actual output">
       <div className="wf-row total" role="row">
         <div className="wf-label" role="cell">
-          <b>Ideal output</b>
+          <b>
+            Ideal output
+            <Tip term="ideal" />
+          </b>
           <small>Perfect, cool panel under a clear sky</small>
         </div>
         <div className="wf-track" role="cell">
@@ -43,6 +49,7 @@ export default function LossBreakdown({ breakdown, soil }) {
               <b>
                 <span className="wf-dot" style={{ background: COLORS[r.key] }} />
                 {r.label}
+                {TIP[r.key] && <Tip term={TIP[r.key]} />}
               </b>
               <small>{r.key === 'dust' && soil ? `${soil.dryDays} dry day${soil.dryDays === 1 ? '' : 's'} since rain${soil.assumed ? ' (assumed)' : ''}` : r.short || r.note}</small>
             </div>
