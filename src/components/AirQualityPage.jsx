@@ -359,7 +359,7 @@ function SolarTeaser({ solar, loading, go }) {
       <p style={{ color: '#d8d1c2', fontSize: 13.5 }}>
         Expected output after clouds, heat, haze and dust. See where your solar goes, the 7-day forecast and a battery plan.
       </p>
-      <button className="btn" style={{ background: 'var(--sun)', borderColor: 'var(--sun)', color: 'var(--ink)' }} onClick={() => go('solar')}>
+      <button className="btn" style={{ background: 'var(--sun)', borderColor: 'var(--sun)', color: 'var(--ink)' }} onClick={() => go('forecast')}>
         Open solar forecast →
       </button>
     </div>

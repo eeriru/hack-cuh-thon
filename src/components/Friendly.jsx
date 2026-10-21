@@ -141,11 +141,8 @@ export function Welcome({ go }) {
           <button className="linkish" onClick={() => go('air')}>Air quality</button> tells you if it's safe to be outside.
         </li>
         <li>
-          <button className="linkish" onClick={() => go('weather')}>Weather</button> shows heat, rain and the week ahead.
-        </li>
-        <li>
-          <button className="linkish" onClick={() => go('solar')}>Solar forecast</button> shows how much power your roof will make, and what's
-          stealing it (clouds, heat, haze, dust).
+          <button className="linkish" onClick={() => go('forecast')}>Weather & solar</button> shows heat, rain and the week ahead, plus how much
+          power your roof will make and what's stealing it (clouds, heat, haze, dust).
         </li>
       </ol>
       <p className="small muted">

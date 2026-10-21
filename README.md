@@ -15,8 +15,7 @@ clouds, heat and dust) that decide how much power a rooftop makes.
 | Page | What it shows |
 |---|---|
 | **Air quality** | IQAir US AQI + official DOE API, DOE health advice, past 24 h, model forecast, 3D haze view, today's/tomorrow's solar output |
-| **Weather** | Now (temperature, feels-like, heat index, dew point, UV, wind, rain, cloud), heat warnings, next-24-hour chart, 7-day forecast with solar output per day |
-| **Solar forecast** | Output in kWh for each of 7 days, **where the solar goes** (ideal → inverter & wiring → heat → clouds & rain → haze → dust → output), hour-by-hour sunlight with/without haze, 3D view, battery & chores plan |
+| **Weather & solar** | Weather now (temperature, feels-like, heat index, dew point, UV, wind, rain, cloud) and heat warnings; solar output in kWh for the picked day; a 7-day picker with weather and solar per day; next-24-hour chart; **where the solar goes** (ideal → inverter & wiring → heat → clouds & rain → haze → dust → output); hour-by-hour sunlight with/without haze; 3D view; battery & chores plan |
 | **Rankings** | Townships/cities by DOE API, IQAir or tomorrow's solar output; all DOE stations; township-wide impact |
 | **How it works** | The method, which model is live, data sources, honest limits |
 

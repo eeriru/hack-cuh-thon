@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import AirQualityPage from './components/AirQualityPage.jsx';
-import SolarPage from './components/SolarPage.jsx';
-import WeatherPage from './components/WeatherPage.jsx';
+import ForecastPage from './components/ForecastPage.jsx';
 import RankingsPage from './components/RankingsPage.jsx';
 import MethodPage from './components/MethodPage.jsx';
 import { LocationBar } from './components/common.jsx';
@@ -12,8 +11,7 @@ import { DEFAULT_PLACE } from './lib/places.js';
 
 const TABS = [
   { id: 'air', label: 'Air quality' },
-  { id: 'weather', label: 'Weather' },
-  { id: 'solar', label: 'Solar forecast' },
+  { id: 'forecast', label: 'Weather & solar' },
   { id: 'rankings', label: 'Rankings' },
   { id: 'method', label: 'How it works' },
 ];
@@ -36,8 +34,12 @@ function save(key, value) {
   }
 }
 
+// Weather and solar used to be two pages; old links and bookmarks open the combined page.
+const OLD_TABS = { weather: 'forecast', solar: 'forecast' };
+
 const tabFromHash = () => {
-  const id = window.location.hash.replace('#/', '');
+  const raw = window.location.hash.replace('#/', '');
+  const id = OLD_TABS[raw] || raw;
   return TABS.some((t) => t.id === id) ? id : 'air';
 };
 
@@ -90,11 +92,10 @@ export default function App() {
         </div>
       </header>
       <main className="shell">
-        {(tab === 'air' || tab === 'weather' || tab === 'solar') && <LocationBar place={place} onChange={setPlace} />}
-        {(tab === 'air' || tab === 'weather' || tab === 'solar') && <Welcome go={go} />}
-        {tab === 'weather' && <WeatherPage place={place} engine={engine} settings={settings} go={go} />}
+        {(tab === 'air' || tab === 'forecast') && <LocationBar place={place} onChange={setPlace} />}
+        {(tab === 'air' || tab === 'forecast') && <Welcome go={go} />}
         {tab === 'air' && <AirQualityPage place={place} engine={engine} go={go} />}
-        {tab === 'solar' && <SolarPage place={place} engine={engine} settings={settings} setSettings={setSettings} go={go} />}
+        {tab === 'forecast' && <ForecastPage place={place} engine={engine} settings={settings} setSettings={setSettings} go={go} />}
         {tab === 'rankings' && (
           <RankingsPage
             engine={engine}

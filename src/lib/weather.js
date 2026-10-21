@@ -1,4 +1,4 @@
-// Weather calculations used by the Weather page and the solar model.
+// Weather calculations used by the Weather & solar page and the solar model.
 
 /** Heat index (°C): how hot it feels once humidity is taken into account (NOAA / Rothfusz). */
 export function heatIndex(tempC, rh) {
