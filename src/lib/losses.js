@@ -9,6 +9,7 @@
 import { pvEnergyKwh, DEFAULT_SYSTEM } from './solar.js';
 import { addDays } from './api.js';
 import { rainByDate } from './weather.js';
+import { tr } from './i18n.js';
 
 /**
  * Dust on the panels (soiling), as a share of output. Dust builds up on dry days and
@@ -66,7 +67,7 @@ export function lossBreakdown(loss, { system = DEFAULT_SYSTEM, soilingPct = 0 } 
     },
     { key: 'clouds', label: 'Clouds & rain', kwh: afterHeat - afterClouds, short: 'Forecast cloud cover', note: 'Forecast cloud cover blocking the sun (net of cooler panels).' },
     { key: 'haze', label: 'Haze', kwh: afterClouds - afterHaze, short: 'Smoke in the air vs a normal day', note: 'Smoke and dust in the air, compared with a normal day.' },
-    { key: 'dust', label: 'Dust on panels', kwh: dust, short: 'Estimate; rain washes panels', note: `Estimated ${soilingPct.toFixed(1)}% soiling; rain washes panels clean.` },
+    { key: 'dust', label: 'Dust on panels', kwh: dust, short: 'Estimate; rain washes panels', note: tr('Estimated {pct}% soiling; rain washes panels clean.', { pct: soilingPct.toFixed(1) }) },
   ];
   const biggest = steps.filter((s) => s.key !== 'system').sort((a, b) => b.kwh - a.kwh)[0];
   return { ideal, final, steps, biggest, performancePct: ideal > 0 ? (final / ideal) * 100 : 0 };

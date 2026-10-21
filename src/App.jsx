@@ -8,6 +8,8 @@ import { Welcome } from './components/Friendly.jsx';
 import { loadEngine } from './lib/model.js';
 import { DEFAULT_HOME } from './lib/battery.js';
 import { DEFAULT_PLACE } from './lib/places.js';
+import { DEFAULT_EV } from './lib/ev.js';
+import { tr, getLang, setLang } from './lib/i18n.js';
 
 const TABS = [
   { id: 'air', label: 'Air quality' },
@@ -16,7 +18,7 @@ const TABS = [
   { id: 'method', label: 'How it works' },
 ];
 
-const DEFAULT_SETTINGS = { kwp: 5, batteryKwh: DEFAULT_HOME.battery.capacityKwh, dailyKwh: DEFAULT_HOME.dailyKwh, home: DEFAULT_HOME };
+const DEFAULT_SETTINGS = { kwp: 5, batteryKwh: DEFAULT_HOME.battery.capacityKwh, dailyKwh: DEFAULT_HOME.dailyKwh, home: DEFAULT_HOME, ev: DEFAULT_EV };
 
 function load(key, fallback) {
   try {
@@ -48,9 +50,15 @@ export default function App() {
   const [place, setPlace] = useState(() => load('sh-place', DEFAULT_PLACE));
   const [settings, setSettings] = useState(() => {
     const s = load('sh-settings', DEFAULT_SETTINGS);
-    return { ...DEFAULT_SETTINGS, ...s, home: { ...DEFAULT_HOME, ...s.home, tariff: { ...DEFAULT_HOME.tariff, ...s.home?.tariff }, battery: { ...DEFAULT_HOME.battery, ...s.home?.battery } } };
+    return { ...DEFAULT_SETTINGS, ...s, home: { ...DEFAULT_HOME, ...s.home, tariff: { ...DEFAULT_HOME.tariff, ...s.home?.tariff }, battery: { ...DEFAULT_HOME.battery, ...s.home?.battery } }, ev: { ...DEFAULT_EV, ...s.ev } };
   });
   const [engine, setEngine] = useState(null);
+  const [lang, setLangState] = useState(getLang);
+  const switchLang = (l) => {
+    setLang(l);
+    setLangState(l);
+  };
+  useEffect(() => setLang(lang), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     loadEngine().then(setEngine);
@@ -79,16 +87,20 @@ export default function App() {
             </svg>
             <span className="brand-name">
               Suria<span>Haze</span>
-              <small className="brand-tag">Solar & weather assistant</small>
+              <small className="brand-tag">{tr('Solar & weather assistant')}</small>
             </span>
           </a>
           <nav className="nav" aria-label="Main">
             {TABS.map((t) => (
               <a key={t.id} href={`#/${t.id}`} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
-                {t.label}
+                {tr(t.label)}
               </a>
             ))}
           </nav>
+          <div className="lang-switch" role="group" aria-label={tr('Language')}>
+            <button className={lang === 'en' ? 'active' : ''} aria-pressed={lang === 'en'} onClick={() => switchLang('en')}>EN</button>
+            <button className={lang === 'ms' ? 'active' : ''} aria-pressed={lang === 'ms'} onClick={() => switchLang('ms')}>BM</button>
+          </div>
         </div>
       </header>
       <main className="shell">
@@ -108,8 +120,9 @@ export default function App() {
         )}
         {tab === 'method' && <MethodPage engine={engine} />}
         <footer className="footer">
-          SuriaHaze — a hackathon prototype for the Township of Tomorrow. Air quality: IQAir (US AQI) and the Department of Environment (DOE) official API via MyEQMS. Weather, haze and
-          sunlight: Open-Meteo (weather models, Copernicus CAMS, JMA/JAXA Himawari). Solar figures are model estimates.
+          {tr(
+            'SuriaHaze — a hackathon prototype for the Township of Tomorrow. Air quality: IQAir (US AQI) and the Department of Environment (DOE) official API via MyEQMS. Weather, haze and sunlight: Open-Meteo (weather models, Copernicus CAMS, JMA/JAXA Himawari). Fire hotspots: NASA FIRMS. Solar figures are model estimates.'
+          )}
         </footer>
       </main>
     </>

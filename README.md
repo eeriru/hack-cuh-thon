@@ -14,10 +14,13 @@ clouds, heat and dust) that decide how much power a rooftop makes.
 
 | Page | What it shows |
 |---|---|
-| **Air quality** | IQAir US AQI + official DOE API, DOE health advice, past 24 h, model forecast, 3D haze view, today's/tomorrow's solar output |
-| **Weather & solar** | Weather now (temperature, feels-like, heat index, dew point, UV, wind, rain, cloud) and heat warnings; solar output in kWh for the picked day; a 7-day picker with weather and solar per day; next-24-hour chart; **where the solar goes** (ideal → inverter & wiring → heat → clouds & rain → haze → dust → output); hour-by-hour sunlight with/without haze; 3D view; battery & chores plan |
-| **Rankings** | Townships/cities by DOE API, IQAir or tomorrow's solar output; all DOE stations; township-wide impact |
+| **Air quality** | IQAir US AQI + official DOE API, DOE health advice, past 24 h, model forecast, **outdoor planner** (best time to exercise, with a stricter mode for children/elderly/asthma), **haze source map** (NASA fire hotspots upwind of you), 3D haze view, today's/tomorrow's solar output |
+| **Weather & solar** | Weather now (temperature, feels-like, heat index, dew point, UV, wind, rain, cloud) and heat warnings; solar output in kWh for the picked day; a 7-day picker with weather and solar per day; next-24-hour chart; **where the solar goes** (ideal → inverter & wiring → heat → clouds & rain → haze → dust → output); hour-by-hour sunlight with/without haze; 3D view; battery & chores plan; **EV charging planner** (cheapest hours, spare solar first); **panel cleaning reminder** (when washing pays off, or wait for rain) |
+| **Rankings** | Townships/cities by DOE API, IQAir or tomorrow's solar output; all DOE stations; **township impact board** (kWh, RM saved and CO₂ avoided if N homes in each township have solar) |
 | **How it works** | The method, which model is live, data sources, honest limits |
+
+The **EN / BM** switch in the top bar changes the whole app to Bahasa Melayu (remembered in the
+browser). Translations live in `src/lib/i18n-ms.js`; any text without a translation falls back to English.
 
 No paid services. Data sources:
 
@@ -62,6 +65,15 @@ The key stays on the server (`api/iqair.js`); the browser never sees it. The fre
 minute and 500 a day, so answers are cached for 15 minutes per location. That is plenty for a demo,
 but too few to rank many towns at once, which is why the Rankings page uses DOE readings. Check
 IQAir's terms of use for the Community plan and keep the "Air quality: IQAir" credit in the footer.
+
+## Connect NASA FIRMS for the haze source map (free, 2 minutes)
+
+1. Get a free MAP_KEY at [firms.modaps.eosdis.nasa.gov/api/map_key](https://firms.modaps.eosdis.nasa.gov/api/map_key/) (just an email address).
+2. In Vercel: **Project → Settings → Environment Variables** → add `FIRMS_MAP_KEY` = your key → **Redeploy**.
+3. Locally: add `FIRMS_MAP_KEY=your-key` to `.env.local`.
+
+`api/fires.js` fetches VIIRS fire hotspots for Sumatra, Borneo and the peninsula (last 2 days) and
+caches them for an hour. Without a key the map still shows the wind direction and says the key is missing.
 
 ## Run locally
 
@@ -131,6 +143,7 @@ node tests/parity.test.mjs /tmp/model.json /tmp/parity.json
 - Tariff rates and the grid emission factor are editable example values; check current TNB rates.
 - The headline reading is the official DOE API; forecasts and pollutant breakdowns are model estimates on the US AQI scale.
 - The DOE feed is public but undocumented, so its format could change. The app degrades gracefully if it does.
+- The haze source map uses wind near the ground; real smoke paths depend on winds higher up.
 
 ## Project layout
 
@@ -143,9 +156,16 @@ src/lib/demo.js       offline simulated haze week
 src/lib/doe.js        official DOE readings: parsing, bands, nearest station
 src/lib/weather.js    heat index, dew point, UV / rain / heat levels
 src/lib/losses.js     solar loss breakdown and dust (soiling) estimate
+src/lib/cleaning.js   panel cleaning reminder
+src/lib/outdoor.js    outdoor planner (hourly rating, best slot)
+src/lib/ev.js         EV charging planner
+src/lib/impact.js     township impact board
+src/lib/fires.js      NASA FIRMS hotspots, upwind regions
+src/lib/i18n.js       English / Bahasa Melayu switch (text in i18n-ms.js)
 api/doe.js            Vercel server function that fetches the DOE feed
 api/iqair.js          Vercel server function that calls IQAir with your secret key
 api/places.js         Vercel server function: IQAir's country → region → city directory
+api/fires.js          Vercel server function: NASA FIRMS fire hotspots (needs FIRMS_MAP_KEY)
 src/lib/browse.js     country matching, browsing and backup city list
 src/lib/iqair.js      IQAir reading in the browser
 src/components/       pages and SVG charts

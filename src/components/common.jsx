@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { searchPlaces } from '../lib/api.js';
 import { TOWNSHIPS } from '../lib/places.js';
 import { matchCountries, matchRegions, matchCities, iqairRegionName, wordMatch, getRegions, getCities, locateCity, FALLBACK_CITIES } from '../lib/browse.js';
+import { tr, locale } from '../lib/i18n.js';
 
 export function useAsync(fn, deps) {
   const [state, setState] = useState({ loading: true, data: null, error: null });
@@ -24,7 +25,7 @@ export function Loading({ text = 'Loading live data…' }) {
     <div className="loading">
       <div style={{ display: 'grid', placeItems: 'center', gap: 12 }}>
         <div className="spinner" />
-        <span>{text}</span>
+        <span>{tr(text)}</span>
       </div>
     </div>
   );
@@ -36,8 +37,8 @@ export function DemoBanner({ source }) {
     <div className="banner" role="status">
       <span aria-hidden="true">⚠️</span>
       <span>
-        <b>Simulated data.</b> Live data from Open-Meteo could not be reached, so you are seeing a simulated haze week.
-        Numbers are illustrative only. Check your connection and refresh to load real readings.
+        <b>{tr('Simulated data.')}</b>{' '}
+        {tr('Live data from Open-Meteo could not be reached, so you are seeing a simulated haze week. Numbers are illustrative only. Check your connection and refresh to load real readings.')}
       </span>
     </div>
   );
@@ -112,8 +113,8 @@ export function LocationBar({ place, onChange }) {
         const fb = FALLBACK_CITIES[country.code];
         setBrowse(
           fb
-            ? { country, kind: 'fallback', items: fb, loading: false, note: 'Showing major cities (IQAir directory unavailable).' }
-            : { country, kind: 'regions', items: [], loading: false, error: `Couldn't load regions (${e.message}). Type a city name instead, e.g. "${country.name === 'Indonesia' ? 'Pekanbaru' : 'capital city'}".` }
+            ? { country, kind: 'fallback', items: fb, loading: false, note: tr('Showing major cities (IQAir directory unavailable).') }
+            : { country, kind: 'regions', items: [], loading: false, error: tr("Couldn't load regions ({err}). Type a city name instead.", { err: e.message }) }
         );
       });
   };
@@ -124,7 +125,7 @@ export function LocationBar({ place, onChange }) {
     setBrowse(
       fb.length
         ? { country, region, kind: 'fallback', items: fb, loading: false, note: why }
-        : { country, region, kind: 'cities', items: [], loading: false, error: `${why} Type a city name in ${region} instead.` }
+        : { country, region, kind: 'cities', items: [], loading: false, error: `${why} ${tr('Type a city name in {region} instead.', { region })}` }
     );
   };
 
@@ -137,12 +138,12 @@ export function LocationBar({ place, onChange }) {
       : Promise.resolve(region);
     resolve
       .then((iqName) => {
-        if (!iqName) return regionFallback(country, region, 'IQAir has no cities listed for this region yet.');
+        if (!iqName) return regionFallback(country, region, tr('IQAir has no cities listed for this region yet.'));
         return getCities(country, iqName).then((items) =>
           setBrowse({ country, region: iqName, kind: 'cities', items, loading: false, fromSearch })
         );
       })
-      .catch(() => regionFallback(country, region, 'Showing major cities (IQAir directory unavailable).'));
+      .catch(() => regionFallback(country, region, tr('Showing major cities (IQAir directory unavailable).')));
   };
 
   const openCity = (country, region, city) => {
@@ -159,7 +160,7 @@ export function LocationBar({ place, onChange }) {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLocating(false);
-        onChange({ name: 'My location', area: `${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)}`, lat: pos.coords.latitude, lon: pos.coords.longitude });
+        onChange({ name: tr('My location'), area: `${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)}`, lat: pos.coords.latitude, lon: pos.coords.longitude });
       },
       () => setLocating(false),
       { timeout: 10000 }
@@ -179,26 +180,26 @@ export function LocationBar({ place, onChange }) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onFocus={() => (results.length || countryMatches.length || browse) && setOpen(true)}
-          placeholder="Search a city or a country"
-          aria-label="Search location"
+          placeholder={tr('Search a city or a country')}
+          aria-label={tr('Search location')}
         />
         {open && showSearch && (
           <div className="search-results">
-            {countryMatches.length > 0 && <div className="sr-head">Browse a country</div>}
+            {countryMatches.length > 0 && <div className="sr-head">{tr('Browse a country')}</div>}
             {countryMatches.map((c) => (
               <button key={c.code} className="sr-country" onClick={() => openCountry(c)}>
                 <span aria-hidden="true">{flag(c.code)}</span> {c.name}
-                <small>regions & cities ›</small>
+                <small>{tr('regions & cities')} ›</small>
               </button>
             ))}
-            {regionMatches.length > 0 && <div className="sr-head">Regions</div>}
+            {regionMatches.length > 0 && <div className="sr-head">{tr('Regions')}</div>}
             {regionMatches.map(({ country, region }) => (
               <button key={`${country.code}-${region}`} onClick={() => openRegion(country, region, { fromSearch: true })}>
                 <span aria-hidden="true">{flag(country.code)}</span> {region}
-                <small>{country.name} · cities ›</small>
+                <small>{country.name} · {tr('cities')} ›</small>
               </button>
             ))}
-            {cityMatches.length > 0 && <div className="sr-head">Major cities</div>}
+            {cityMatches.length > 0 && <div className="sr-head">{tr('Major cities')}</div>}
             {cityMatches.map((c) => (
               <button key={`${c.name}-${c.lat}`} onClick={() => pick(c)}>
                 {c.name}
@@ -206,7 +207,7 @@ export function LocationBar({ place, onChange }) {
               </button>
             ))}
             {results.length > 0 && (countryMatches.length > 0 || regionMatches.length > 0 || cityMatches.length > 0) && (
-              <div className="sr-head">Other places</div>
+              <div className="sr-head">{tr('Other places')}</div>
             )}
             {results.map((r) => (
               <button key={`${r.lat},${r.lon}`} onClick={() => pick(r)}>
@@ -222,9 +223,9 @@ export function LocationBar({ place, onChange }) {
               <button
                 className="sr-back"
                 onClick={() => (browse.region && !browse.fromSearch ? openCountry(browse.country) : setBrowse(null))}
-                aria-label="Back"
+                aria-label={tr('Back')}
               >
-                ‹ Back
+                ‹ {tr('Back')}
               </button>
               <b>
                 {flag(browse.country.code)} {browse.region ? `${browse.region}, ${browse.country.name}` : browse.country.name}
@@ -235,16 +236,16 @@ export function LocationBar({ place, onChange }) {
                 className="sr-filter"
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                placeholder={browse.kind === 'regions' ? 'Filter regions…' : 'Filter cities…'}
-                aria-label="Filter list"
+                placeholder={browse.kind === 'regions' ? tr('Filter regions…') : tr('Filter cities…')}
+                aria-label={tr('Filter list')}
                 autoFocus
               />
             )}
             <div className="sr-list">
-              {browse.loading && <div className="sr-msg">Loading…</div>}
+              {browse.loading && <div className="sr-msg">{tr('Loading…')}</div>}
               {browse.error && <div className="sr-msg">{browse.error}</div>}
               {browse.note && <div className="sr-msg">{browse.note}</div>}
-              {!browse.loading && !browse.error && shownItems.length === 0 && <div className="sr-msg">Nothing matches.</div>}
+              {!browse.loading && !browse.error && shownItems.length === 0 && <div className="sr-msg">{tr('Nothing matches.')}</div>}
               {shownItems.map((it) =>
                 browse.kind === 'fallback' ? (
                   <button key={it.name} onClick={() => pick(it)}>
@@ -254,12 +255,12 @@ export function LocationBar({ place, onChange }) {
                 ) : browse.kind === 'regions' ? (
                   <button key={it} onClick={() => openRegion(browse.country, it)}>
                     {it}
-                    <small>cities ›</small>
+                    <small>{tr('cities')} ›</small>
                   </button>
                 ) : (
                   <button key={it} onClick={() => openCity(browse.country, browse.region, it)} disabled={!!busyCity}>
                     {it}
-                    <small>{busyCity === it ? 'Locating…' : browse.region}</small>
+                    <small>{busyCity === it ? tr('Locating…') : browse.region}</small>
                   </button>
                 )
               )}
@@ -268,9 +269,9 @@ export function LocationBar({ place, onChange }) {
         )}
       </div>
       <button className="btn ghost" onClick={locate} disabled={locating}>
-        {locating ? 'Locating…' : '◎ Use my location'}
+        {locating ? tr('Locating…') : `◎ ${tr('Use my location')}`}
       </button>
-      <div className="chips" aria-label="Sime Darby townships">
+      <div className="chips" aria-label={tr('Sime Darby townships')}>
         {TOWNSHIPS.slice(0, 6).map((t) => (
           <button key={t.name} className={`chip ${place.name === t.name ? 'active' : ''}`} onClick={() => onChange(t)}>
             {t.name}
@@ -282,7 +283,7 @@ export function LocationBar({ place, onChange }) {
 }
 
 export const fmtTime = (unix, offsetSec, opts = { hour: 'numeric', minute: '2-digit' }) =>
-  new Date((unix + offsetSec) * 1000).toLocaleString('en-MY', { ...opts, timeZone: 'UTC' });
+  new Date((unix + offsetSec) * 1000).toLocaleString(locale(), { ...opts, timeZone: 'UTC' });
 
 export const fmtDate = (dateStr, opts = { weekday: 'short', day: 'numeric', month: 'short' }) =>
-  new Date(`${dateStr}T00:00:00Z`).toLocaleDateString('en-MY', { ...opts, timeZone: 'UTC' });
+  new Date(`${dateStr}T00:00:00Z`).toLocaleDateString(locale(), { ...opts, timeZone: 'UTC' });

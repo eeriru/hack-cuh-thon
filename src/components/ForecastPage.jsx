@@ -15,6 +15,9 @@ import { TOWNSHIPS } from '../lib/places.js';
 import { useAsync, Loading, DemoBanner, fmtDate, fmtTime } from './common.jsx';
 import { InShort, Tip, More } from './Friendly.jsx';
 import { solarSummary, weatherSummary } from '../lib/summary.js';
+import CleaningCard from './CleaningCard.jsx';
+import EvCard from './EvCard.jsx';
+import { tr } from '../lib/i18n.js';
 
 const MAX_PAST = 85;
 const MAX_AHEAD = 6; // a 7-day forecast (today + 6)
@@ -25,7 +28,7 @@ const has = (v) => v !== null && v !== undefined;
 const Stat = ({ k, v, unit, sub, tone, tip }) => (
   <div className="stat">
     <div className="k">
-      {k}
+      {tr(k)}
       {tip && <Tip term={tip} />}
     </div>
     <div className="v">
@@ -193,16 +196,29 @@ export default function ForecastPage({ place, engine, settings, setSettings, go 
   }, [nowQ.data, today]);
 
   if (loading || !data || !engine || !wxNow) return <Loading text="Loading the weather and running the solar model…" />;
-  if (!current) return <div className="card section">No data for this date. Try another date.</div>;
+  if (!current) return <div className="card section">{tr('No data for this date. Try another date.')}</div>;
 
   const L = current.loss;
   const B = current.breakdown;
   const haze = hazeLevel(L.meanAod);
-  const dayWord = current.d === today ? 'today' : current.d === addDays(today, 1) ? 'tomorrow' : `on ${fmtDate(current.d)}`;
+  const dayWord = current.d === today ? tr('today') : current.d === addDays(today, 1) ? tr('tomorrow') : tr('on {date}', { date: fmtDate(current.d) });
   const isPast = current.d < today;
   const maxOut = Math.max(1, ...days.map((x) => x.breakdown.final));
   const t = dayHome.tariff;
   const avgRate = t.mode === 'flat' ? t.flatRate : (t.peakRate + t.offPeakRate) / 2;
+
+  // Coming days for the cleaning reminder (today first).
+  const cleanDays = days
+    .filter((x) => x.d >= today)
+    .map((x) => ({
+      d: x.d,
+      label: x.d === today ? tr('today') : fmtDate(x.d, { weekday: 'long' }),
+      soilPct: x.soil.pct,
+      dryDays: x.soil.dryDays,
+      smoky: x.soil.smoky,
+      rainMm: x.wx.rain,
+      kwhBeforeDust: x.loss.kwhHaze,
+    }));
 
   const W = wxNow;
   const night = W.c.isDay === 0;
@@ -215,7 +231,7 @@ export default function ForecastPage({ place, engine, settings, setSettings, go 
     days: days
       .filter((x) => x.d >= today && x.daily)
       .map((x) => ({
-        label: x.d === today ? 'Today' : fmtDate(x.d, { weekday: 'long' }),
+        label: x.d === today ? tr('Today') : fmtDate(x.d, { weekday: 'long' }),
         rain: x.daily.rain,
         rainChance: x.daily.rainChance,
         code: x.daily.weather_code,
@@ -228,16 +244,16 @@ export default function ForecastPage({ place, engine, settings, setSettings, go 
     <>
       <DemoBanner source={data.source} />
       <div className="place-title">
-        <h1>Weather & solar</h1>
+        <h1>{tr('Weather & solar')}</h1>
         <span className="sub">
-          {place.name} · {place.area} · solar for a {settings.kwp} kW rooftop
+          {place.name} · {place.area} · {tr('solar for a {kwp} kW rooftop', { kwp: settings.kwp })}
           <Tip term="kwp" label="What is kW / kWp?" />
         </span>
-        <span className="stamp">Updated {W.c.time ? fmtTime(W.c.time, W.offsetSec) : '—'} local time</span>
+        <span className="stamp">{tr('Updated {time} local time', { time: W.c.time ? fmtTime(W.c.time, W.offsetSec) : '—' })}</span>
       </div>
 
       <InShort
-        title={`In short · ${isPast ? fmtDate(current.d, { weekday: 'long', day: 'numeric', month: 'short' }) : dayWord === 'today' ? 'today' : dayWord.replace(/^on /, '')}`}
+        title={`${tr('In short')} · ${isPast ? fmtDate(current.d, { weekday: 'long', day: 'numeric', month: 'short' }) : current.d === today ? tr('today') : current.d === addDays(today, 1) ? tr('tomorrow') : fmtDate(current.d)}`}
         items={[...weatherItems, ...solarSummary({
           day: {
             label: dayWord,
@@ -249,19 +265,19 @@ export default function ForecastPage({ place, engine, settings, setSettings, go 
           },
           days: days
             .filter((x) => x.d >= today)
-            .map((x) => ({ label: x.d === today ? 'today' : fmtDate(x.d, { weekday: 'long' }), final: x.breakdown.final })),
+            .map((x) => ({ label: x.d === today ? tr('today') : fmtDate(x.d, { weekday: 'long' }), final: x.breakdown.final })),
           dailyUse: home.dailyKwh,
           isPast,
           tip:
             plan && plan.flexWhy === 'sunniest' && !isPast
-              ? `Tip: run the washing machine and water heater ${hourRanges(plan.flexHours)}, the sunniest hours.`
+              ? tr('Tip: run the washing machine and water heater {hours}, the sunniest hours.', { hours: hourRanges(plan.flexHours) })
               : null,
         })]}
       />
 
-      <section className="wx-hero section" aria-label="Weather now">
+      <section className="wx-hero section" aria-label={tr('Weather now')}>
         <div className={`wx-now ${mood}`}>
-          <span className="label">Weather now</span>
+          <span className="label">{tr('Weather now')}</span>
           <div className="row" style={{ alignItems: 'center' }}>
             <span className="temp">
               {fmt(W.c.temp)}
@@ -269,27 +285,27 @@ export default function ForecastPage({ place, engine, settings, setSettings, go 
             </span>
             <span style={{ fontSize: 54 }} aria-hidden="true">{weatherIcon(W.c.weather_code, !night)}</span>
           </div>
-          <span className="cond">{WEATHER_TEXT[W.c.weather_code] || '—'}</span>
+          <span className="cond">{tr(WEATHER_TEXT[W.c.weather_code]) || '—'}</span>
           <span className="feels">
-            Feels like {fmt(W.c.feels ?? W.hi)}°C<Tip term="feelsLike" />
-            {W.todayDaily ? ` · today ${fmt(W.todayDaily.tmin)}–${fmt(W.todayDaily.tmax)}°C` : ''}
+            {tr('Feels like')} {fmt(W.c.feels ?? W.hi)}°C<Tip term="feelsLike" />
+            {W.todayDaily ? ` · ${tr('today')} ${fmt(W.todayDaily.tmin)}–${fmt(W.todayDaily.tmax)}°C` : ''}
           </span>
         </div>
         <div className="wx-stats">
-          <Stat k="Heat index" tip="heatIndex" v={fmt(W.hi)} unit="°C" sub={W.risk.label} tone={W.risk.tone} />
-          <Stat k="Humidity" tip="dewPoint" v={fmt(W.c.rh)} unit="%" sub={W.dew !== null ? `Dew point ${fmt(W.dew)}°C${W.dew >= 24 ? ' · muggy' : ''}` : null} />
-          <Stat k="UV index" tip="uv" v={fmt(W.c.uv, 1)} sub={W.uv.label} tone={W.uv.tone} />
-          <Stat k="Wind" v={fmt(W.c.wind)} unit="km/h" sub={`${compass(W.c.windDir)}${W.c.gust ? ` · gusts ${fmt(W.c.gust)} km/h` : ''}`} />
-          <Stat k="Rain next 24 h" tip="rainChance" v={fmt(W.rainNext24, 1)} unit="mm" sub={`Up to ${Math.round(W.maxChance)}% chance`} />
-          <Stat k="Cloud cover" v={fmt(W.c.cloud)} unit="%" sub={W.todayDaily?.sunset ? `Sunset ${fmtTime(W.todayDaily.sunset, W.offsetSec)}` : null} />
+          <Stat k="Heat index" tip="heatIndex" v={fmt(W.hi)} unit="°C" sub={tr(W.risk.label)} tone={W.risk.tone} />
+          <Stat k="Humidity" tip="dewPoint" v={fmt(W.c.rh)} unit="%" sub={W.dew !== null ? `${tr('Dew point')} ${fmt(W.dew)}°C${W.dew >= 24 ? ` · ${tr('muggy')}` : ''}` : null} />
+          <Stat k="UV index" tip="uv" v={fmt(W.c.uv, 1)} sub={tr(W.uv.label)} tone={W.uv.tone} />
+          <Stat k="Wind" v={fmt(W.c.wind)} unit="km/h" sub={`${compass(W.c.windDir)}${W.c.gust ? ` · ${tr('gusts')} ${fmt(W.c.gust)} km/h` : ''}`} />
+          <Stat k="Rain next 24 h" tip="rainChance" v={fmt(W.rainNext24, 1)} unit="mm" sub={tr('Up to {pct}% chance', { pct: Math.round(W.maxChance) })} />
+          <Stat k="Cloud cover" v={fmt(W.c.cloud)} unit="%" sub={W.todayDaily?.sunset ? `${tr('Sunset')} ${fmtTime(W.todayDaily.sunset, W.offsetSec)}` : null} />
         </div>
       </section>
 
       {W.hi !== null && W.hi >= 32 && (
         <div className="card section risk-card">
-          <h2>Heat warning: {W.risk.label.toLowerCase()}</h2>
+          <h2>{tr('Heat warning')}: {tr(W.risk.label).toLowerCase()}</h2>
           <p className="lede" style={{ margin: 0, color: 'var(--ink-2)' }}>
-            With {fmt(W.c.rh)}% humidity, {fmt(W.c.temp)}°C feels like {fmt(W.hi)}°C. {W.risk.advice}
+            {tr('With {rh}% humidity, {temp}°C feels like {hi}°C.', { rh: fmt(W.c.rh), temp: fmt(W.c.temp), hi: fmt(W.hi) })} {tr(W.risk.advice)}
           </p>
         </div>
       )}
@@ -298,20 +314,20 @@ export default function ForecastPage({ place, engine, settings, setSettings, go 
 
       <section className="headline section">
         <div>
-          <div className="eyebrow">{isPast ? 'Replay' : 'Forecast'} · {fmtDate(current.d, { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+          <div className="eyebrow">{isPast ? tr('Replay') : tr('Forecast')} · {fmtDate(current.d, { weekday: 'long', day: 'numeric', month: 'long' })}</div>
           <h2>
-            Your panels {isPast ? 'made' : 'will make'} <em>{B.final.toFixed(1)} kWh</em> {dayWord}.
+            {isPast ? tr('Your panels made') : tr('Your panels will make')} <em>{B.final.toFixed(1)} kWh</em> {dayWord}.
           </h2>
           <p>
-            That's {B.performancePct.toFixed(0)}% of the ideal
-            <Tip term="ideal" label="What is ideal output?" /> and worth about RM {(B.final * avgRate).toFixed(2)} of electricity
-            <Tip term="kwh" label="What is a kWh?" />. The biggest loss is <b style={{ color: 'var(--paper)' }}>{B.biggest.label.toLowerCase()}</b>
-            {L.lossPct >= 1 ? `; haze ${isPast ? 'took' : 'takes'} ${L.lossPct.toFixed(0)}%` : '; haze is barely a factor'}.
+            {tr("That's {pct}% of the ideal", { pct: B.performancePct.toFixed(0) })}
+            <Tip term="ideal" label="What is ideal output?" /> {tr('and worth about RM {rm} of electricity', { rm: (B.final * avgRate).toFixed(2) })}
+            <Tip term="kwh" label="What is a kWh?" />. {tr('The biggest loss is')} <b style={{ color: 'var(--paper)' }}>{tr(B.biggest.label).toLowerCase()}</b>
+            {L.lossPct >= 1 ? `; ${tr(isPast ? 'haze took {pct}%' : 'haze takes {pct}%', { pct: L.lossPct.toFixed(0) })}` : `; ${tr('haze is barely a factor')}`}.
           </p>
         </div>
         <div className="headline-stats">
           <div className="hs">
-            <div className="k">Solar output</div>
+            <div className="k">{tr('Solar output')}</div>
             <div className="v">
               {B.final.toFixed(1)}
               <small>kWh</small>
@@ -319,7 +335,7 @@ export default function ForecastPage({ place, engine, settings, setSettings, go 
           </div>
           <div className="hs">
             <div className="k">
-              Lost to haze
+              {tr('Lost to haze')}
               <Tip term="hazeLoss" label="How is haze loss measured?" />
             </div>
             <div className="v">
@@ -328,22 +344,22 @@ export default function ForecastPage({ place, engine, settings, setSettings, go 
             </div>
             {plan && (
               <div className="k">
-                {plan.hazeCostRm >= 0.01 ? `Adds RM ${plan.hazeCostRm.toFixed(2)} to your bill` : 'No extra cost on your bill today'}
+                {plan.hazeCostRm >= 0.01 ? tr('Adds RM {rm} to your bill', { rm: plan.hazeCostRm.toFixed(2) }) : tr('No extra cost on your bill today')}
               </div>
             )}
           </div>
           <div className="hs">
-            <div className="k">Weather</div>
+            <div className="k">{tr('Weather')}</div>
             <div className="v" style={{ fontSize: 18 }}>
-              {weatherIcon(current.wx.code)} {WEATHER_TEXT[current.wx.code] || '—'}
+              {weatherIcon(current.wx.code)} {tr(WEATHER_TEXT[current.wx.code]) || '—'}
             </div>
             <div className="k">
-              {current.wx.tmax !== null ? `${Math.round(current.wx.tmax)}°C max` : ''}
-              {current.wx.rain !== null ? ` · ${current.wx.rain.toFixed(1)} mm rain` : ''}
+              {current.wx.tmax !== null ? `${Math.round(current.wx.tmax)}°C ${tr('max')}` : ''}
+              {current.wx.rain !== null ? ` · ${current.wx.rain.toFixed(1)} mm ${tr('rain')}` : ''}
             </div>
           </div>
           <div className="hs">
-            <div className="k">Cloud cover (daylight)</div>
+            <div className="k">{tr('Cloud cover (daylight)')}</div>
             <div className="v">
               {Math.round(L.meanCloud)}
               <small>%</small>
@@ -355,15 +371,14 @@ export default function ForecastPage({ place, engine, settings, setSettings, go 
       <div className="card section">
         <div className="spread">
           <div>
-            <h2>7-day weather & solar</h2>
+            <h2>{tr('7-day weather & solar')}</h2>
             <p className="lede">
-              Pick a day to see its weather and solar output. Bar = expected output. Past days replay real readings; future days use the weather
-              and haze forecast.
+              {tr('Pick a day to see its weather and solar output. Bar = expected output. Past days replay real readings; future days use the weather and haze forecast.')}
               <Tip term="kwh" label="What is a kWh?" />
             </p>
           </div>
           <label className="field" style={{ minWidth: 190 }}>
-            <label htmlFor="jump">Jump to a date</label>
+            <label htmlFor="jump">{tr('Jump to a date')}</label>
             <input
               id="jump"
               type="date"
@@ -382,7 +397,7 @@ export default function ForecastPage({ place, engine, settings, setSettings, go 
           {days.map(({ d, loss, breakdown, wx, daily }) => (
             <button key={d} role="tab" aria-selected={d === current.d} className={`datebtn ${d === current.d ? 'active' : ''}`} onClick={() => setSelected(d)}>
               <div className="d">
-                {d === today ? 'Today' : fmtDate(d)} <span aria-hidden="true">{weatherIcon(wx.code)}</span>
+                {d === today ? tr('Today') : fmtDate(d)} <span aria-hidden="true">{weatherIcon(wx.code)}</span>
               </div>
               <div className="bar">
                 <i style={{ width: `${(breakdown.final / maxOut) * 100}%`, background: 'var(--sun)' }} />
@@ -395,8 +410,8 @@ export default function ForecastPage({ place, engine, settings, setSettings, go 
                 {has(wx.tmax) ? `${Math.round(wx.tmax)}°` : ''}
                 {has(daily?.tmin) ? ` / ${Math.round(daily.tmin)}°` : ''}
                 {has(wx.tmax) ? ' · ' : ''}
-                {loss.lossPct >= 0.5 ? `haze −${loss.lossPct.toFixed(0)}%` : 'no haze'}
-                {wx.rain >= 0.5 ? ` · rain ${wx.rain.toFixed(0)} mm` : ''}
+                {loss.lossPct >= 0.5 ? `${tr('haze')} −${loss.lossPct.toFixed(0)}%` : tr('no haze')}
+                {wx.rain >= 0.5 ? ` · ${tr('rain')} ${wx.rain.toFixed(0)} mm` : ''}
               </div>
             </button>
           ))}
@@ -405,8 +420,8 @@ export default function ForecastPage({ place, engine, settings, setSettings, go 
       </div>
 
       <div className="card section">
-        <h2>Next 24 hours</h2>
-        <p className="lede">Temperature (solid), feels-like (dashed) and rain (bars). Hover for details.</p>
+        <h2>{tr('Next 24 hours')}</h2>
+        <p className="lede">{tr('Temperature (solid), feels-like (dashed) and rain (bars). Hover for details.')}</p>
         <WeatherChart
           rows={W.next.map((h) => ({
             t: h.t,
@@ -421,24 +436,24 @@ export default function ForecastPage({ place, engine, settings, setSettings, go 
       </div>
 
       <div className="card section">
-        <h2>What's reducing your solar?</h2>
+        <h2>{tr("What's reducing your solar?")}</h2>
         <p className="lede">
-          Start from the best possible day at the top; each row is something that takes power away. The yellow bar at the bottom is what you
-          {isPast ? ' got' : "'ll get"}.
+          {isPast
+            ? tr('Start from the best possible day at the top; each row is something that takes power away. The yellow bar at the bottom is what you got.')
+            : tr("Start from the best possible day at the top; each row is something that takes power away. The yellow bar at the bottom is what you'll get.")}
         </p>
         <LossBreakdown breakdown={B} soil={current.soil} />
         {!current.hazeForecast && (
           <p className="small muted" style={{ marginTop: 10 }}>
-            No haze forecast this far ahead, so normal haze is assumed for this day.
+            {tr('No haze forecast this far ahead, so normal haze is assumed for this day.')}
           </p>
         )}
       </div>
 
       <div className="card section">
-        <h2>See the haze over your roof</h2>
+        <h2>{tr('See the haze over your roof')}</h2>
         <p className="lede">
-          A 3D view of terrace homes at {isPast ? 'the' : "the forecast"} haze level for {fmtDate(current.d)}. Drag to look around, or move the
-          slider to see how thicker haze dims the panels.
+          {tr('A 3D view of terrace homes at the haze level for {date}. Drag to look around, or move the slider to see how thicker haze dims the panels.', { date: fmtDate(current.d) })}
         </p>
         <HazeScene3D
           aod={L.meanAod}
@@ -450,22 +465,35 @@ export default function ForecastPage({ place, engine, settings, setSettings, go 
 
       {plan && <PlanCard plan={plan} home={dayHome} isPast={isPast} weekend={weekend && home.tariff.mode === 'tou'} />}
 
+      {plan && <EvCard spareSolar={plan.hazeAware.exported} settings={settings} setSettings={setSettings} home={dayHome} isPast={isPast} />}
+
+      {cleanDays.length > 0 && cleanDays[0].d === today && <CleaningCard days={cleanDays} rate={avgRate} />}
+
       <More title="Hour-by-hour sunlight" hint="See exactly when the haze takes power, and check against satellite measurements">
       <div className="card">
-        <p className="lede">The hatched band is the sunlight the haze took away. Hover for the inputs the model used each hour.</p>
+        <p className="lede">{tr('The hatched band is the sunlight the haze took away. Hover for the inputs the model used each hour.')}</p>
         <SolarChart rows={L.rows} satellite={sat.data} />
         <div className="legend">
-          <span><i style={{ background: 'transparent', borderTop: '2px dashed var(--sun-deep)', height: 0 }} />Without haze (run B)</span>
-          <span><i style={{ background: '#fbd98a' }} />With haze (run A)</span>
-          <span><i style={{ background: '#f6c3a8', boxShadow: 'inset 0 0 0 2px #e0703e' }} />Lost to haze</span>
-          {sat.data?.size > 0 && <span><i style={{ background: 'var(--sky)', borderRadius: 99, width: 10 }} />Measured by Himawari satellite</span>}
+          <span><i style={{ background: 'transparent', borderTop: '2px dashed var(--sun-deep)', height: 0 }} />{tr('Without haze (run B)')}</span>
+          <span><i style={{ background: '#fbd98a' }} />{tr('With haze (run A)')}</span>
+          <span><i style={{ background: '#f6c3a8', boxShadow: 'inset 0 0 0 2px #e0703e' }} />{tr('Lost to haze')}</span>
+          {sat.data?.size > 0 && <span><i style={{ background: 'var(--sky)', borderRadius: 99, width: 10 }} />{tr('Measured by Himawari satellite')}</span>}
         </div>
         {validation && (
           <p className="small" style={{ marginTop: 12 }}>
-            <b>Reality check:</b> over {validation.n} daylight hours, the haze-aware prediction was off by{' '}
-            {Math.round(validation.maeHaze)} W/m² on average against satellite measurements, versus {Math.round(validation.maeClean)} W/m² if
-            haze were ignored. Total sunlight {validation.biasPct >= 0 ? 'over' : 'under'}-estimated by {Math.abs(validation.biasPct).toFixed(0)}%
-            (ignoring haze: {validation.noHazeBiasPct >= 0 ? 'over' : 'under'} by {Math.abs(validation.noHazeBiasPct).toFixed(0)}%). Cloud forecasts are the biggest source of error on any single day.
+            <b>{tr('Reality check:')}</b>{' '}
+            {tr(
+              'over {n} daylight hours, the haze-aware prediction was off by {mae} W/m² on average against satellite measurements, versus {mae0} W/m² if haze were ignored. Total sunlight {dir}-estimated by {bias}% (ignoring haze: {dir0} by {bias0}%). Cloud forecasts are the biggest source of error on any single day.',
+              {
+                n: validation.n,
+                mae: Math.round(validation.maeHaze),
+                mae0: Math.round(validation.maeClean),
+                dir: tr(validation.biasPct >= 0 ? 'over' : 'under'),
+                bias: Math.abs(validation.biasPct).toFixed(0),
+                dir0: tr(validation.noHazeBiasPct >= 0 ? 'over' : 'under'),
+                bias0: Math.abs(validation.noHazeBiasPct).toFixed(0),
+              }
+            )}
           </p>
         )}
       </div>
@@ -474,31 +502,31 @@ export default function ForecastPage({ place, engine, settings, setSettings, go 
       <More title="How these numbers are calculated" hint="Heat index, dew point, warnings, UV, rain and solar">
         <div className="card">
           <ul className="small" style={{ paddingLeft: 18, margin: 0, color: 'var(--ink-2)' }}>
-            <li><b>Heat index</b>: NOAA formula from temperature and humidity (how hot it feels in the shade).</li>
-            <li><b>Dew point</b>: Magnus formula; above 24°C the air feels muggy.</li>
-            <li><b>Heat warning</b>: NOAA heat-index bands (caution from 27°C, extreme caution from 32°C, danger from 41°C).</li>
-            <li><b>UV</b>: WHO categories. <b>Rain</b>: daily totals (light &lt;10 mm, heavy ≥30 mm).</li>
-            <li><b>Solar per day</b>: weather, haze and dust go through the solar model, then the losses are split out in "What's reducing your solar?".</li>
+            <li><b>{tr('Heat index')}</b>: {tr('NOAA formula from temperature and humidity (how hot it feels in the shade).')}</li>
+            <li><b>{tr('Dew point')}</b>: {tr('Magnus formula; above 24°C the air feels muggy.')}</li>
+            <li><b>{tr('Heat warning')}</b>: {tr('NOAA heat-index bands (caution from 27°C, extreme caution from 32°C, danger from 41°C).')}</li>
+            <li><b>UV</b>: {tr('WHO categories.')} <b>{tr('Rain')}</b>: {tr('daily totals (light <10 mm, heavy ≥30 mm).')}</li>
+            <li><b>{tr('Solar per day')}</b>: {tr('weather, haze and dust go through the solar model, then the losses are split out in the breakdown above.')}</li>
           </ul>
         </div>
       </More>
 
-      <More title="Your home settings" hint={`${settings.kwp} kW solar · ${settings.batteryKwh} kWh battery · ${settings.dailyKwh} kWh/day · ${settings.home.tariff.mode === 'tou' ? 'time-of-use' : 'flat'} tariff`}>
+      <More title="Your home settings" hint={`${settings.kwp} kW ${tr('solar')} · ${settings.batteryKwh} kWh ${tr('battery')} · ${settings.dailyKwh} kWh/${tr('day')} · ${tr(settings.home.tariff.mode === 'tou' ? 'time-of-use tariff' : 'flat tariff')}`}>
       <div className="card">
-        <p className="lede">Change these to match your house. Saved in this browser.</p>
+        <p className="lede">{tr('Change these to match your house. Saved in this browser.')}</p>
         <div className="settings">
           <NumField label="Solar size" unit="kWp" value={settings.kwp} min={1} max={20} step={0.5} onChange={(v) => setSettings({ ...settings, kwp: v })} />
           <NumField label="Battery" unit="kWh" value={settings.batteryKwh} min={1} max={30} step={0.5} onChange={(v) => setSettings({ ...settings, batteryKwh: v })} />
           <NumField label="Daily use" unit="kWh" value={settings.dailyKwh} min={5} max={60} step={1} onChange={(v) => setSettings({ ...settings, dailyKwh: v })} hint="Your monthly bill kWh ÷ 30" />
           <div className="field">
-            <label htmlFor="tariff">Tariff</label>
+            <label htmlFor="tariff">{tr('Tariff')}</label>
             <select
               id="tariff"
               value={settings.home.tariff.mode}
               onChange={(e) => setSettings({ ...settings, home: { ...settings.home, tariff: { ...settings.home.tariff, mode: e.target.value } } })}
             >
-              <option value="tou">Time-of-use (peak 2pm–10pm weekdays)</option>
-              <option value="flat">Flat rate</option>
+              <option value="tou">{tr('Time-of-use (peak 2pm–10pm weekdays)')}</option>
+              <option value="flat">{tr('Flat rate')}</option>
             </select>
           </div>
           {settings.home.tariff.mode === 'tou' ? (
@@ -520,20 +548,20 @@ function DayWeather({ daily: d, offsetSec, label }) {
   const rl = rainLevel(d.rain);
   const ul = uvLevel(d.uvMax);
   return (
-    <div className="day-wx" aria-label={`Weather for ${label}`}>
+    <div className="day-wx" aria-label={tr('Weather for {day}', { day: label })}>
       <div className="day-wx-head">
         <span className="ic" aria-hidden="true">{weatherIcon(d.weather_code)}</span>
         <div>
           <div className="small muted">{label}</div>
-          <b>{WEATHER_TEXT[d.weather_code] || '—'}</b>
+          <b>{tr(WEATHER_TEXT[d.weather_code]) || '—'}</b>
         </div>
       </div>
       <div className="day-wx-stats">
-        <span><b>{fmt(d.tmax)}° / {fmt(d.tmin)}°</b>{has(d.feelsMax) ? ` · feels ${fmt(d.feelsMax)}°` : ''}</span>
+        <span><b>{fmt(d.tmax)}° / {fmt(d.tmin)}°</b>{has(d.feelsMax) ? ` · ${tr('feels')} ${fmt(d.feelsMax)}°` : ''}</span>
         <span className={`tone-${rl.tone}`}>💧 {fmt(d.rain, 1)} mm{has(d.rainChance) ? ` · ${Math.round(d.rainChance)}%` : ''}</span>
-        <span>UV {fmt(d.uvMax)} <span className={`tone-${ul.tone}`}>{ul.label}</span></span>
-        <span>Wind {fmt(d.windMax)} km/h {compass(d.windDir)}</span>
-        {has(d.sunshineSec) && <span>☀ {fmt(d.sunshineSec / 3600, 1)} h sunshine</span>}
+        <span>UV {fmt(d.uvMax)} <span className={`tone-${ul.tone}`}>{tr(ul.label)}</span></span>
+        <span>{tr('Wind')} {fmt(d.windMax)} km/h {compass(d.windDir)}</span>
+        {has(d.sunshineSec) && <span>☀ {tr('{h} h sunshine', { h: fmt(d.sunshineSec / 3600, 1) })}</span>}
         {d.sunrise && d.sunset && <span>🌅 {fmtTime(d.sunrise, offsetSec)} – {fmtTime(d.sunset, offsetSec)}</span>}
       </div>
     </div>
@@ -545,7 +573,7 @@ function NumField({ label, unit, value, onChange, min, max, step, hint }) {
   return (
     <div className="field">
       <label htmlFor={id}>
-        {label} ({unit})
+        {tr(label)} ({unit})
       </label>
       <input
         id={id}
@@ -559,7 +587,7 @@ function NumField({ label, unit, value, onChange, min, max, step, hint }) {
           if (!Number.isNaN(v)) onChange(Math.min(max, Math.max(min, v)));
         }}
       />
-      {hint && <div className="hint">{hint}</div>}
+      {hint && <div className="hint">{tr(hint)}</div>}
     </div>
   );
 }
@@ -569,41 +597,40 @@ function PlanCard({ plan, home, isPast, weekend }) {
   const s = plan.standard;
   const h = plan.hazeAware;
   const steps = [];
-  if (plan.flexWhy === 'sunniest') steps.push(`Run the washing machine, dryer and water heater ${hourRanges(plan.flexHours)} — the sunniest hours left after the haze.`);
-  else if (plan.flexWhy === 'offpeak') steps.push(`Solar is too weak to cover chores today — run them after ${fmtHour(home.tariff.peakEnd)} at the off-peak rate.`);
-  else steps.push(`Keep chores at the usual time (${hourRanges(plan.flexHours)}); moving them would not save money today.`);
-  if (plan.reserve) steps.push(`Save the battery for the ${fmtHour(home.tariff.peakStart)}–${fmtHour(home.tariff.peakEnd)} peak instead of draining it in the morning.`);
-  if (plan.topUpKwh > 0.05) steps.push(`Haze means the battery will not fill from solar alone: top it up with ${plan.topUpKwh.toFixed(1)} kWh from the grid between 2am and 6am at the off-peak rate.`);
-  if (!plan.reserve && plan.topUpKwh <= 0.05 && tou) steps.push('Let the battery cover demand whenever solar falls short — no reserve needed today.');
+  if (plan.flexWhy === 'sunniest') steps.push(tr('Run the washing machine, dryer and water heater {hours} — the sunniest hours left after the haze.', { hours: hourRanges(plan.flexHours) }));
+  else if (plan.flexWhy === 'offpeak') steps.push(tr('Solar is too weak to cover chores today — run them after {hour} at the off-peak rate.', { hour: fmtHour(home.tariff.peakEnd) }));
+  else steps.push(tr('Keep chores at the usual time ({hours}); moving them would not save money today.', { hours: hourRanges(plan.flexHours) }));
+  if (plan.reserve) steps.push(tr('Save the battery for the {from}–{to} peak instead of draining it in the morning.', { from: fmtHour(home.tariff.peakStart), to: fmtHour(home.tariff.peakEnd) }));
+  if (plan.topUpKwh > 0.05) steps.push(tr('Haze means the battery will not fill from solar alone: top it up with {kwh} kWh from the grid between 2am and 6am at the off-peak rate.', { kwh: plan.topUpKwh.toFixed(1) }));
+  if (!plan.reserve && plan.topUpKwh <= 0.05 && tou) steps.push(tr('Let the battery cover demand whenever solar falls short — no reserve needed today.'));
 
   return (
     <div className="card section">
       <h2>
-        Save money with a smarter day {isPast ? '(what would have helped)' : ''}
+        {tr('Save money with a smarter day')} {isPast ? tr('(what would have helped)') : ''}
         <Tip term="battery" />
       </h2>
       <p className="lede">
-        We replay the day hour by hour with your predicted (hazy) solar output and try every combination of chore timing, battery reserve
-        and off-peak top-up, keeping the cheapest. Household demand is simulated from a typical Malaysian terrace home.
-        {weekend && ' Weekend: time-of-use is off-peak all day.'}
+        {tr('We replay the day hour by hour with your predicted (hazy) solar output and try every combination of chore timing, battery reserve and off-peak top-up, keeping the cheapest. Household demand is simulated from a typical Malaysian terrace home.')}
+        {weekend && ` ${tr('Weekend: time-of-use is off-peak all day.')}`}
       </p>
       <div className="plan-cols">
         <div className="plan">
-          <h3>Standard day</h3>
+          <h3>{tr('Standard day')}</h3>
           <div className="big">RM {s.costRm.toFixed(2)}</div>
           <div className="small muted">
-            {s.gridKwh.toFixed(1)} kWh from the grid · {s.co2Kg.toFixed(1)} kg CO₂
+            {s.gridKwh.toFixed(1)} kWh {tr('from the grid')} · {s.co2Kg.toFixed(1)} kg CO₂
           </div>
           <ul>
-            <li>Chores at {hourRanges(plan.usualHours)}</li>
-            <li>Battery empties whenever solar falls short</li>
+            <li>{tr('Chores at {hours}', { hours: hourRanges(plan.usualHours) })}</li>
+            <li>{tr('Battery empties whenever solar falls short')}</li>
           </ul>
         </div>
         <div className="plan smart">
-          <h3>☀ Haze-aware plan</h3>
+          <h3>☀ {tr('Haze-aware plan')}</h3>
           <div className="big">RM {h.costRm.toFixed(2)}</div>
           <div className="small muted">
-            {h.gridKwh.toFixed(1)} kWh from the grid · {h.co2Kg.toFixed(1)} kg CO₂
+            {h.gridKwh.toFixed(1)} kWh {tr('from the grid')} · {h.co2Kg.toFixed(1)} kg CO₂
           </div>
           <ul>
             {steps.map((x) => (
@@ -615,25 +642,25 @@ function PlanCard({ plan, home, isPast, weekend }) {
       <div className="savings">
         <div>
           <div className="v">RM {plan.savingRm.toFixed(2)}</div>
-          <div className="k">Saved today · ~RM {(plan.savingRm * 30).toFixed(0)}/month at this rate</div>
+          <div className="k">{tr('Saved today · ~RM {m}/month at this rate', { m: (plan.savingRm * 30).toFixed(0) })}</div>
         </div>
         <div>
           <div className="v" style={{ color: plan.gridSavedKwh >= 0 ? 'var(--good)' : 'var(--ink-2)' }}>
             {plan.gridSavedKwh >= 0 ? '' : '+'}
             {Math.abs(plan.gridSavedKwh).toFixed(1)} kWh
           </div>
-          <div className="k">{plan.gridSavedKwh >= 0 ? 'Less grid power' : 'More grid power (cheaper hours)'}</div>
+          <div className="k">{plan.gridSavedKwh >= 0 ? tr('Less grid power') : tr('More grid power (cheaper hours)')}</div>
         </div>
         <div>
           <div className="v" style={{ color: plan.co2SavedKg >= 0 ? 'var(--good)' : 'var(--ink-2)' }}>
             {Math.abs(plan.co2SavedKg).toFixed(1)} kg
           </div>
-          <div className="k">CO₂ {plan.co2SavedKg >= 0 ? 'avoided' : 'added'}</div>
+          <div className="k">CO₂ {plan.co2SavedKg >= 0 ? tr('avoided') : tr('added')}</div>
         </div>
       </div>
       <div style={{ marginTop: 16 }}>
-        <div className="small" style={{ fontWeight: 700 }}>Haze-aware schedule</div>
-        <div className="timeline" aria-label="24-hour schedule">
+        <div className="small" style={{ fontWeight: 700 }}>{tr('Haze-aware schedule')}</div>
+        <div className="timeline" aria-label={tr('24-hour schedule')}>
           {Array.from({ length: 24 }, (_, hr) => {
             const peak = tou && hr >= home.tariff.peakStart && hr < home.tariff.peakEnd;
             const flex = plan.flexHours.includes(hr);
@@ -642,7 +669,7 @@ function PlanCard({ plan, home, isPast, weekend }) {
               <div
                 key={hr}
                 className={`${peak ? 'peak' : ''} ${flex ? 'flex' : ''} ${top ? 'topup' : ''}`}
-                title={`${fmtHour(hr)}${flex ? ' · run chores' : ''}${top ? ' · grid top-up' : ''}${peak ? ' · peak rate' : ''}`}
+                title={`${fmtHour(hr)}${flex ? ` · ${tr('run chores')}` : ''}${top ? ` · ${tr('grid top-up')}` : ''}${peak ? ` · ${tr('peak rate')}` : ''}`}
               />
             );
           })}
@@ -653,17 +680,17 @@ function PlanCard({ plan, home, isPast, weekend }) {
           ))}
         </div>
         <div className="legend">
-          <span><i style={{ background: 'var(--sun)' }} />Run chores</span>
-          {plan.topUpKwh > 0.05 && <span><i style={{ background: 'var(--sky)' }} />Grid top-up</span>}
-          {tou && <span><i style={{ background: 'var(--paper-2)', boxShadow: 'inset 0 -3px 0 #c9b9a0' }} />Peak rate</span>}
+          <span><i style={{ background: 'var(--sun)' }} />{tr('Run chores')}</span>
+          {plan.topUpKwh > 0.05 && <span><i style={{ background: 'var(--sky)' }} />{tr('Grid top-up')}</span>}
+          {tou && <span><i style={{ background: 'var(--paper-2)', boxShadow: 'inset 0 -3px 0 #c9b9a0' }} />{tr('Peak rate')}</span>}
         </div>
       </div>
       <div style={{ marginTop: 16 }}>
-        <div className="small" style={{ fontWeight: 700 }}>Battery charge through the day</div>
+        <div className="small" style={{ fontWeight: 700 }}>{tr('Battery charge through the day')}</div>
         <SocChart standard={s.soc} smart={h.soc} />
         <div className="legend">
-          <span><i style={{ background: 'transparent', borderTop: '2px dashed var(--ink-3)', height: 0 }} />Standard</span>
-          <span><i style={{ background: 'var(--sun-deep)', height: 3 }} />Haze-aware</span>
+          <span><i style={{ background: 'transparent', borderTop: '2px dashed var(--ink-3)', height: 0 }} />{tr('Standard')}</span>
+          <span><i style={{ background: 'var(--sun-deep)', height: 3 }} />{tr('Haze-aware')}</span>
         </div>
       </div>
     </div>

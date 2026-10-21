@@ -1,35 +1,61 @@
+import { tr } from '../lib/i18n.js';
+
+// One step of the method, with a heading and paragraphs (all translated).
+function Step({ title, children }) {
+  return (
+    <div className="step">
+      <div>
+        <h3>{tr(title)}</h3>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+const P = ({ t, vars }) => <p>{tr(t, vars)}</p>;
+
 export default function MethodPage({ engine }) {
   const trained = engine?.kind === 'trained';
   return (
     <>
       <div className="place-title">
-        <h1>How it works</h1>
-        <span className="sub">A solar and weather assistant built on a hybrid physics + machine-learning model</span>
+        <h1>{tr('How it works')}</h1>
+        <span className="sub">{tr('A solar and weather assistant built on a hybrid physics + machine-learning model')}</span>
       </div>
 
       <div className="card section" style={{ borderColor: trained ? 'var(--good)' : 'var(--sun)' }}>
         <div className="spread">
           <div>
-            <h2>Model in use: {engine ? engine.label : 'loading…'}</h2>
+            <h2>
+              {tr('Model in use:')} {engine ? tr(engine.label) : tr('loading…')}
+            </h2>
             {trained && engine.trainedOn?.synthetic && (
-              <div className="banner">This model.json was trained on SIMULATED self-test data. Retrain on real data before the pitch.</div>
+              <div className="banner">{tr('This model.json was trained on SIMULATED self-test data. Retrain on real data before the pitch.')}</div>
             )}
             {trained ? (
               <p className="lede" style={{ marginBottom: 0 }}>
-                Trained on {engine.trainedOn?.rows?.toLocaleString() ?? '?'} daylight hours from{' '}
-                {engine.trainedOn?.locations?.join(', ') ?? 'Malaysian locations'} ({engine.trainedOn?.start} to {engine.trainedOn?.end}).
+                {tr('Trained on {rows} daylight hours from {places} ({start} to {end}).', {
+                  rows: engine.trainedOn?.rows?.toLocaleString() ?? '?',
+                  places: engine.trainedOn?.locations?.join(', ') ?? tr('Malaysian locations'),
+                  start: engine.trainedOn?.start,
+                  end: engine.trainedOn?.end,
+                })}
                 {engine.metrics && (
                   <>
-                    {' '}Held-out test (haze period {engine.metrics.test_period}): error {engine.metrics.mae_with_haze?.toFixed(3)} with haze inputs vs{' '}
-                    {engine.metrics.mae_without_haze?.toFixed(3)} without (clear-sky index, mean absolute error).
+                    {' '}
+                    {tr('Held-out test (haze period {period}): error {a} with haze inputs vs {b} without (clear-sky index, mean absolute error).', {
+                      period: engine.metrics.test_period,
+                      a: engine.metrics.mae_with_haze?.toFixed(3),
+                      b: engine.metrics.mae_without_haze?.toFixed(3),
+                    })}
                   </>
                 )}
               </p>
             ) : (
               <p className="lede" style={{ marginBottom: 0 }}>
-                No trained model is deployed yet, so the app uses a physics baseline (Beer–Lambert haze attenuation with diffuse-light
-                recovery, and the Kasten–Czeplak cloud formula). Run <code>training/train_solar_haze_model.py</code> in Google Colab and
-                put the resulting <code>model.json</code> in <code>public/</code> to switch to the trained model automatically.
+                {tr(
+                  'No trained model is deployed yet, so the app uses a physics baseline (Beer–Lambert haze attenuation with diffuse-light recovery, and the Kasten–Czeplak cloud formula). Run training/train_solar_haze_model.py in Google Colab and put the resulting model.json in public/ to switch to the trained model automatically.'
+                )}
               </p>
             )}
           </div>
@@ -38,113 +64,86 @@ export default function MethodPage({ engine }) {
 
       <div className="card section">
         <div className="steps">
-          <div className="step">
-            <div>
-              <h3>Maximum possible sunlight (physics)</h3>
-              <p>
-                For every hour, the sun's position is calculated from the date, time and location (NOAA solar equations). The Haurwitz
-                clear-sky formula turns that into the sunlight a perfectly clear sky would deliver. Near noon in Selangor that is around
-                950 W/m².
-              </p>
+          <Step title="Maximum possible sunlight (physics)">
+            <P t="For every hour, the sun's position is calculated from the date, time and location (NOAA solar equations). The Haurwitz clear-sky formula turns that into the sunlight a perfectly clear sky would deliver. Near noon in Selangor that is around 950 W/m²." />
+          </Step>
+          <Step title="How much gets through (AI)">
+            <P t="The model predicts a ratio rather than raw sunlight, which leaves it only the messy part to learn:" />
+            <div className="formula">{tr('clear-sky index = actual sunlight ÷ clear-sky sunlight')}</div>
+            <P t="Inputs: aerosol optical depth and PM2.5 (haze), low/mid/high cloud cover, humidity, temperature and the sun's angle. Training target: sunlight measured by Japan's Himawari satellite over Malaysia, divided by the clear-sky value." />
+          </Step>
+          <Step title="Sunlight to electricity">
+            <P t="Predicted sunlight × system size, minus about 0.4% per °C the panels run above 25 °C (cell temperature from air temperature and sunlight) and 14% for inverter, wiring and dirt." />
+          </Step>
+          <Step title="Isolating the haze (the key idea)">
+            <P t="The model runs twice for the same hours, with identical clouds and weather:" />
+            <div className="formula">
+              {tr('Run A: real haze forecast')}&nbsp;&nbsp;·&nbsp;&nbsp;
+              {tr('Run B: haze set to a normal level (AOD {aod}, PM2.5 {pm})', { aod: engine?.reference?.aod ?? 0.3, pm: engine?.reference?.pm2_5 ?? 15 })}
+              <br />
+              {tr('Solar lost to haze = Run B − Run A')}
             </div>
-          </div>
-          <div className="step">
-            <div>
-              <h3>How much gets through (AI)</h3>
-              <p>The model predicts a ratio rather than raw sunlight, which leaves it only the messy part to learn:</p>
-              <div className="formula">clear-sky index = actual sunlight ÷ clear-sky sunlight</div>
-              <p>
-                Inputs: aerosol optical depth and PM2.5 (haze), low/mid/high cloud cover, humidity, temperature and the sun's angle.
-                Training target: sunlight measured by Japan's Himawari satellite over Malaysia, divided by the clear-sky value.
-              </p>
+            <P t="That separates smoke from ordinary cloudiness, so a rainy afternoon is never blamed on haze." />
+          </Step>
+          <Step title="Where the solar goes (full loss breakdown)">
+            <P t="Each day's output is traced from the ideal down to the forecast, step by step, so the steps always add up:" />
+            <div className="formula">
+              {tr(
+                'Ideal (perfect, cool panel, clear sky) − inverter & wiring (~14%) − heat (0.4% per °C above 25 °C) − clouds & rain − haze − dust on panels = what your panels make'
+              )}
             </div>
-          </div>
-          <div className="step">
-            <div>
-              <h3>Sunlight to electricity</h3>
-              <p>
-                Predicted sunlight × system size, minus about 0.4% per °C the panels run above 25 °C (cell temperature from air
-                temperature and sunlight) and 14% for inverter, wiring and dirt.
-              </p>
-            </div>
-          </div>
-          <div className="step">
-            <div>
-              <h3>Isolating the haze (the key idea)</h3>
-              <p>The model runs twice for the same hours, with identical clouds and weather:</p>
-              <div className="formula">
-                Run A: real haze forecast&nbsp;&nbsp;·&nbsp;&nbsp;Run B: haze set to a normal level (AOD {engine?.reference?.aod ?? 0.3}, PM2.5{' '}
-                {engine?.reference?.pm2_5 ?? 15})<br />
-                Solar lost to haze = Run B − Run A
-              </div>
-              <p>That separates smoke from ordinary cloudiness, so a rainy afternoon is never blamed on haze.</p>
-            </div>
-          </div>
-          <div className="step">
-            <div>
-              <h3>Where the solar goes (full loss breakdown)</h3>
-              <p>Each day's output is traced from the ideal down to the forecast, step by step, so the steps always add up:</p>
-              <div className="formula">
-                Ideal (perfect, cool panel, clear sky) − inverter & wiring (~14%) − heat (0.4% per °C above 25 °C) − clouds & rain −
-                haze − dust on panels = what your panels make
-              </div>
-              <p>
-                Dust is an estimate: about 1% after rain, plus ~0.4% per dry day and 0.5% on smoky days, up to 6%. Rain washes the
-                panels clean, so the app counts dry days since the last rain of 2 mm or more.
-              </p>
-            </div>
-          </div>
-          <div className="step">
-            <div>
-              <h3>Weather forecast and calculations</h3>
-              <p>
-                7-day forecast (temperature, rain amount and chance, wind, UV, sunshine) from Open-Meteo's weather models. The app
-                calculates the heat index (NOAA), dew point (Magnus formula), heat-stress warnings, UV and rain levels, and the solar
-                output for each forecast day.
-              </p>
-            </div>
-          </div>
-          <div className="step">
-            <div>
-              <h3>Battery and chores plan</h3>
-              <p>
-                The day is replayed hour by hour with the predicted solar output. The planner tries every combination of three levers
-                (when to run chores, whether to save the battery for the 2pm–10pm peak, and whether to top up from the grid overnight)
-                and keeps the cheapest, so it never does worse than a normal day.
-              </p>
-            </div>
-          </div>
+            <P t="Dust is an estimate: about 1% after rain, plus ~0.4% per dry day and 0.5% on smoky days, up to 6%. Rain washes the panels clean, so the app counts dry days since the last rain of 2 mm or more." />
+          </Step>
+          <Step title="Weather forecast and calculations">
+            <P t="7-day forecast (temperature, rain amount and chance, wind, UV, sunshine) from Open-Meteo's weather models. The app calculates the heat index (NOAA), dew point (Magnus formula), heat-stress warnings, UV and rain levels, and the solar output for each forecast day." />
+          </Step>
+          <Step title="Battery and chores plan">
+            <P t="The day is replayed hour by hour with the predicted solar output. The planner tries every combination of three levers (when to run chores, whether to save the battery for the 2pm–10pm peak, and whether to top up from the grid overnight) and keeps the cheapest, so it never does worse than a normal day." />
+          </Step>
+          <Step title="EV charging planner">
+            <P t="Daily driving × the car's energy use gives the charge needed. Solar the house and battery can't use goes to the car first; the rest comes from the grid at the cheapest hours the car is plugged in. This is compared with plugging in as soon as you get home." />
+          </Step>
+          <Step title="Panel cleaning reminder">
+            <P t="Uses the same dust estimate as the loss breakdown. It compares the week's output if the panels stay dusty with washing them today, and says to wait when rain in the next two days will wash them for free." />
+          </Step>
+          <Step title="Outdoor planner">
+            <P t="Each coming hour is rated from the air-quality forecast (US AQI), the heat index, UV and rain, with stricter air limits for children, elderly people and asthma. The best two-hour slot of each day is shown." />
+          </Step>
+          <Step title="Haze source map">
+            <P t="Fire hotspots from NASA's VIIRS satellites (last 2 days) are compared with the wind direction. Fires inside a 70° wedge pointing upwind, within 1,500 km, are the likely sources; they are grouped by region (e.g. Riau, Jambi, Central Kalimantan). Wind near the ground is a rough guide: smoke also travels higher up." />
+          </Step>
+          <Step title="Township impact board">
+            <P t="Tomorrow's forecast output for one home is multiplied by the number of solar homes in each township, then turned into money saved (your tariff), CO₂ avoided (grid factor) and simple comparisons (trees, car kilometres)." />
+          </Step>
         </div>
       </div>
 
       <div className="grid grid-2 section">
         <div className="card">
-          <h2>Data sources (all free)</h2>
+          <h2>{tr('Data sources (all free)')}</h2>
           <ul className="small" style={{ paddingLeft: 18, margin: 0 }}>
-            <li>Current air quality (headline number): IQAir, US AQI for the nearest IQAir city, the same number as iqair.com</li>
-            <li>
-              Official reference and past 24 hours: Air Pollutant Index (API) from the Department of Environment's MyEQMS hourly feed,
-              nearest station to the chosen place
-            </li>
-            <li>Haze (aerosol optical depth), pollutant estimates and air-quality forecasts: Open-Meteo Air Quality API (Copernicus CAMS)</li>
-            <li>Weather, clouds, rain, UV and the 7-day forecast: Open-Meteo Forecast API</li>
-            <li>Measured sunlight: Open-Meteo Satellite Radiation API (JMA/JAXA Himawari)</li>
-            <li>Place search: Open-Meteo Geocoding API</li>
+            <li>{tr('Current air quality (headline number): IQAir, US AQI for the nearest IQAir city, the same number as iqair.com')}</li>
+            <li>{tr("Official reference and past 24 hours: Air Pollutant Index (API) from the Department of Environment's MyEQMS hourly feed, nearest station to the chosen place")}</li>
+            <li>{tr('Haze (aerosol optical depth), pollutant estimates and air-quality forecasts: Open-Meteo Air Quality API (Copernicus CAMS)')}</li>
+            <li>{tr('Weather, clouds, rain, UV and the 7-day forecast: Open-Meteo Forecast API')}</li>
+            <li>{tr('Measured sunlight: Open-Meteo Satellite Radiation API (JMA/JAXA Himawari)')}</li>
+            <li>{tr('Fire hotspots: NASA FIRMS (VIIRS satellites)')}</li>
+            <li>{tr('Place search: Open-Meteo Geocoding API')}</li>
           </ul>
           <p className="small muted">
-            The headline number comes from IQAir, so it matches the IQAir app. The DOE's official API is shown next to it; the two
-            differ because they use different scales (US AQI vs Malaysian API) and IQAir adds its own sensors. The DOE does not publish
-            forecasts or haze depth, so forecasts and the solar model use Copernicus model data, shown on the US AQI scale and
-            labelled as model estimates.
+            {tr(
+              "The headline number comes from IQAir, so it matches the IQAir app. The DOE's official API is shown next to it; the two differ because they use different scales (US AQI vs Malaysian API) and IQAir adds its own sensors. The DOE does not publish forecasts or haze depth, so forecasts and the solar model use Copernicus model data, shown on the US AQI scale and labelled as model estimates."
+            )}
           </p>
         </div>
         <div className="card">
-          <h2>Honest limits</h2>
+          <h2>{tr('Honest limits')}</h2>
           <ul className="small" style={{ paddingLeft: 18, margin: 0 }}>
-            <li>Haze and cloud data come from ~11–45 km grids, not your street.</li>
-            <li>Household demand is simulated; there is no public Malaysian smart-meter data.</li>
-            <li>Rooftop output is estimated from satellite sunlight. A pilot with real inverter data from township homes would calibrate it.</li>
-            <li>Tariff and grid-emission figures are example values you can edit.</li>
+            <li>{tr('Haze and cloud data come from ~11–45 km grids, not your street.')}</li>
+            <li>{tr('Household demand is simulated; there is no public Malaysian smart-meter data.')}</li>
+            <li>{tr('Rooftop output is estimated from satellite sunlight. A pilot with real inverter data from township homes would calibrate it.')}</li>
+            <li>{tr('Tariff and grid-emission figures are example values you can edit.')}</li>
+            <li>{tr('The haze source map uses wind near the ground; real smoke paths depend on winds higher up.')}</li>
           </ul>
         </div>
       </div>

@@ -43,7 +43,7 @@ export function baseLoadProfile(home, pm25ByHour = []) {
   });
 }
 
-const rateAt = (tariff, h) =>
+export const rateAt = (tariff, h) =>
   tariff.mode === 'flat'
     ? tariff.flatRate
     : h >= tariff.peakStart && h < tariff.peakEnd
@@ -53,10 +53,11 @@ const rateAt = (tariff, h) =>
 function simulate({ pv, load, home, allowDischarge, gridChargeKwh }) {
   const { capacityKwh, powerKw, efficiency, startSocPct } = home.battery;
   let soc = (capacityKwh * startSocPct) / 100;
-  const out = { gridKwh: 0, exportKwh: 0, costRm: 0, soc: [], grid: [], fromBattery: [] };
+  const out = { gridKwh: 0, exportKwh: 0, costRm: 0, soc: [], grid: [], fromBattery: [], exported: [] };
   for (let h = 0; h < 24; h++) {
     let grid = 0;
     let fromBattery = 0;
+    let exported = 0;
     // Planned overnight top-up from the grid
     const topUp = Math.min(gridChargeKwh[h] || 0, powerKw, (capacityKwh - soc) / efficiency);
     if (topUp > 0) {
@@ -68,7 +69,8 @@ function simulate({ pv, load, home, allowDischarge, gridChargeKwh }) {
       const room = Math.max(0, powerKw - topUp);
       const charge = Math.min(-net, room, (capacityKwh - soc) / efficiency);
       soc += charge * efficiency;
-      out.exportKwh += -net - charge;
+      exported = -net - charge;
+      out.exportKwh += exported;
     } else if (net > 0) {
       if (allowDischarge(h)) fromBattery = Math.min(net, powerKw, soc);
       soc -= fromBattery;
@@ -79,6 +81,7 @@ function simulate({ pv, load, home, allowDischarge, gridChargeKwh }) {
     out.soc.push((soc / capacityKwh) * 100);
     out.grid.push(grid);
     out.fromBattery.push(fromBattery);
+    out.exported.push(exported);
   }
   out.co2Kg = out.gridKwh * home.gridKgCo2PerKwh;
   return out;

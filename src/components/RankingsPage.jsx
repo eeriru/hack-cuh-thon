@@ -9,6 +9,8 @@ import { tryDoeStations, nearestStation, doeLevel, DOE_SYMBOLS, DOE_SOURCE_URL }
 import { TOWNSHIPS, CITIES } from '../lib/places.js';
 import { useAsync, Loading, DemoBanner, fmtTime } from './common.jsx';
 import { InShort, Tip } from './Friendly.jsx';
+import ImpactBoard from './ImpactBoard.jsx';
+import { tr } from '../lib/i18n.js';
 
 // IQAir's free plan allows 5 lookups a minute. Readings go through the shared queue in
 // lib/iqair.js (spaced out, paused when IQAir is busy, remembered for 30 minutes) and
@@ -89,7 +91,6 @@ export default function RankingsPage({ engine, settings, onPick }) {
   }, [doe.data]);
 
   const maxLoss = Math.max(5, ...rows.map((r) => r.loss.lossPct));
-  const avgLossKwh = rows.length ? rows.reduce((s, r) => s + r.loss.lossKwh, 0) / rows.length : 0;
   const rate = settings.home.tariff.mode === 'flat' ? settings.home.tariff.flatRate : (settings.home.tariff.peakRate + settings.home.tariff.offPeakRate) / 2;
   const busy = doe.loading || (group !== 'stations' && (loading || !data));
 
@@ -100,14 +101,14 @@ export default function RankingsPage({ engine, settings, onPick }) {
         <div className="banner" role="status">
           <span aria-hidden="true">ℹ️</span>
           <span>
-            Official DOE readings could not be loaded right now. Check{' '}
+            {tr('Official DOE readings could not be loaded right now. Check')}{' '}
             <a href={DOE_SOURCE_URL} target="_blank" rel="noreferrer">MyEQMS (DOE)</a>.
           </span>
         </div>
       )}
       <div className="place-title">
-        <h1>Rankings</h1>
-        <span className="sub">Compare places: air quality right now, and how much solar power each will make tomorrow</span>
+        <h1>{tr('Rankings')}</h1>
+        <span className="sub">{tr('Compare places: air quality right now, and how much solar power each will make tomorrow')}</span>
       </div>
       {group !== 'stations' && rows.length > 0 && (
         <InShort
@@ -120,28 +121,34 @@ export default function RankingsPage({ engine, settings, onPick }) {
             return [
               worstAir && {
                 icon: '😷',
-                text: `Worst air now: ${worstAir.place.name} (official API ${worstAir.api}, ${doeLevel(worstAir.api).label.toLowerCase()}). Cleanest: ${bestAir.place.name} (${bestAir.api}).`,
+                text: tr('Worst air now: {worst} (official API {api}, {level}). Cleanest: {best} ({bestApi}).', {
+                  worst: worstAir.place.name,
+                  api: worstAir.api,
+                  level: tr(doeLevel(worstAir.api).label).toLowerCase(),
+                  best: bestAir.place.name,
+                  bestApi: bestAir.api,
+                }),
               },
-              { icon: '⚡', text: `Most solar tomorrow: ${bestSun.place.name}, about ${bestSun.output.toFixed(0)} kWh for a ${settings.kwp} kW system.` },
-              hazy.loss.lossPct >= 3 && { icon: '🌫️', text: `Haze hits ${hazy.place.name} hardest tomorrow (−${hazy.loss.lossPct.toFixed(0)}% solar).` },
-              { icon: '👆', text: 'Tap any row to see that place in detail.' },
+              { icon: '⚡', text: tr('Most solar tomorrow: {name}, about {kwh} kWh for a {kwp} kW system.', { name: bestSun.place.name, kwh: bestSun.output.toFixed(0), kwp: settings.kwp }) },
+              hazy.loss.lossPct >= 3 && { icon: '🌫️', text: tr('Haze hits {name} hardest tomorrow (−{pct}% solar).', { name: hazy.place.name, pct: hazy.loss.lossPct.toFixed(0) }) },
+              { icon: '👆', text: tr('Tap any row to see that place in detail.') },
             ];
           })()}
         />
       )}
       <div className="spread section">
         <div className="chips">
-          <button className={`chip ${group === 'townships' ? 'active' : ''}`} onClick={() => setGroup('townships')}>Sime Darby townships</button>
-          <button className={`chip ${group === 'cities' ? 'active' : ''}`} onClick={() => setGroup('cities')}>Malaysian cities</button>
-          <button className={`chip ${group === 'stations' ? 'active' : ''}`} onClick={() => setGroup('stations')}>All DOE stations</button>
+          <button className={`chip ${group === 'townships' ? 'active' : ''}`} onClick={() => setGroup('townships')}>{tr('Sime Darby townships')}</button>
+          <button className={`chip ${group === 'cities' ? 'active' : ''}`} onClick={() => setGroup('cities')}>{tr('Malaysian cities')}</button>
+          <button className={`chip ${group === 'stations' ? 'active' : ''}`} onClick={() => setGroup('stations')}>{tr('All DOE stations')}</button>
         </div>
         {group !== 'stations' && (
           <div className="chips">
-            <span className="small muted" style={{ alignSelf: 'center' }}>Sort by</span>
+            <span className="small muted" style={{ alignSelf: 'center' }}>{tr('Sort by')}</span>
             <button className={`chip ${sortBy === 'doe' ? 'active' : ''}`} onClick={() => setSortBy('doe')}>DOE API</button>
             <button className={`chip ${sortBy === 'iqair' ? 'active' : ''}`} onClick={() => setSortBy('iqair')}>IQAir</button>
-            <button className={`chip ${sortBy === 'output' ? 'active' : ''}`} onClick={() => setSortBy('output')}>Solar output</button>
-            <button className={`chip ${sortBy === 'loss' ? 'active' : ''}`} onClick={() => setSortBy('loss')}>Haze loss</button>
+            <button className={`chip ${sortBy === 'output' ? 'active' : ''}`} onClick={() => setSortBy('output')}>{tr('Solar output')}</button>
+            <button className={`chip ${sortBy === 'loss' ? 'active' : ''}`} onClick={() => setSortBy('loss')}>{tr('Haze loss')}</button>
           </div>
         )}
       </div>
@@ -158,9 +165,9 @@ export default function RankingsPage({ engine, settings, onPick }) {
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>{group === 'townships' ? 'Township' : 'City'}</th>
+                    <th>{tr(group === 'townships' ? 'Township' : 'City')}</th>
                     <th>
-                      DOE API (official)
+                      {tr('DOE API (official)')}
                       <Tip term="doeApi" />
                     </th>
                     <th>
@@ -168,10 +175,10 @@ export default function RankingsPage({ engine, settings, onPick }) {
                       <Tip term="usAqi" />
                     </th>
                     <th>
-                      Solar tomorrow
+                      {tr('Solar tomorrow')}
                       <Tip term="kwh" label="What is a kWh?" />
                     </th>
-                    <th style={{ minWidth: 170 }}>Lost to haze ({settings.kwp} kW)</th>
+                    <th style={{ minWidth: 170 }}>{tr('Lost to haze')} ({settings.kwp} kW)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -179,7 +186,7 @@ export default function RankingsPage({ engine, settings, onPick }) {
                     const dl = doeLevel(r.api);
                     const il = aqiLevel(r.iq?.aqius);
                     return (
-                      <tr key={r.place.name} className="clickable" onClick={() => onPick(r.place)} title="Open this location">
+                      <tr key={r.place.name} className="clickable" onClick={() => onPick(r.place)} title={tr('Open this location')}>
                         <td className="rank">{i + 1}</td>
                         <td>
                           <b>{r.place.name}</b>
@@ -190,11 +197,11 @@ export default function RankingsPage({ engine, settings, onPick }) {
                             <>
                               <span className="badge" style={{ background: dl.color, color: dl.ink }}>{r.api}</span>
                               <div className="small muted">
-                                {dl.label} · {r.official.station.name}, {Math.round(r.official.distanceKm)} km
+                                {tr(dl.label)} · {r.official.station.name}, {Math.round(r.official.distanceKm)} km
                               </div>
                             </>
                           ) : (
-                            <span className="small muted">{doe.data ? 'No station nearby' : 'Unavailable'}</span>
+                            <span className="small muted">{doe.data ? tr('No station nearby') : tr('Unavailable')}</span>
                           )}
                         </td>
                         <td>
@@ -202,12 +209,12 @@ export default function RankingsPage({ engine, settings, onPick }) {
                             <>
                               <span className="badge" style={{ background: il.color, color: il.ink }}>{Math.round(r.iq.aqius)}</span>
                               <div className="small muted">
-                                {il.short || il.label} · {r.iq.city}
+                                {tr(il.short || il.label)} · {r.iq.city}
                               </div>
                             </>
                           ) : (
                             <span className="small muted">
-                              {r.iqState === 'waiting' ? 'Waiting for IQAir…' : r.iqState === 'busy' ? 'IQAir busy' : 'Unavailable'}
+                              {r.iqState === 'waiting' ? tr('Waiting for IQAir…') : r.iqState === 'busy' ? tr('IQAir busy') : tr('Unavailable')}
                             </span>
                           )}
                         </td>
@@ -230,40 +237,17 @@ export default function RankingsPage({ engine, settings, onPick }) {
               </table>
             </div>
             <p className="small muted" style={{ margin: '10px 0 0' }}>
-              DOE: latest hourly reading from the nearest official station. IQAir: nearest IQAir city
+              {tr('DOE: latest hourly reading from the nearest official station. IQAir: nearest IQAir city')}
               {iqDone < rows.length
-                ? ` (${iqDone}/${rows.length} loaded${
-                    iqPausedUntil ? `, IQAir is busy, resuming in ${Math.max(1, Math.ceil((iqPausedUntil - Date.now()) / 1000))} s` : ''
-                  }; the free plan allows 5 lookups a minute, so the rest fill in over the next few minutes)`
+                ? ` (${tr('{done}/{total} loaded', { done: iqDone, total: rows.length })}${
+                    iqPausedUntil ? `, ${tr('IQAir is busy, resuming in {s} s', { s: Math.max(1, Math.ceil((iqPausedUntil - Date.now()) / 1000)) })}` : ''
+                  }; ${tr('the free plan allows 5 lookups a minute, so the rest fill in over the next few minutes')})`
                 : ''}
-              . Solar: weather, haze and sunlight forecast model (output after clouds, heat, haze and dust).
+              . {tr('Solar: weather, haze and sunlight forecast model (output after clouds, heat, haze and dust).')}
             </p>
           </div>
 
-          <div className="card section">
-            <h2>{group === 'townships' ? 'Township-wide impact tomorrow' : 'Impact across these cities tomorrow'}</h2>
-            <p className="lede">If this many homes in each location have a {settings.kwp} kW rooftop system:</p>
-            <div className="row">
-              <div className="field" style={{ width: 180 }}>
-                <label htmlFor="homes">Solar homes per location</label>
-                <input id="homes" type="number" min={1} max={100000} value={homes} onChange={(e) => setHomes(Math.max(1, parseInt(e.target.value || '1', 10)))} />
-              </div>
-            </div>
-            <div className="savings">
-              <div>
-                <div className="v" style={{ color: 'var(--loss)' }}>{((avgLossKwh * homes * rows.length) / 1000).toFixed(1)} MWh</div>
-                <div className="k">Solar energy lost to haze ({rows.length} locations × {homes} homes)</div>
-              </div>
-              <div>
-                <div className="v" style={{ color: 'var(--loss)' }}>RM {Math.round(avgLossKwh * homes * rows.length * rate).toLocaleString()}</div>
-                <div className="k">Extra grid electricity at ~RM {rate.toFixed(2)}/kWh</div>
-              </div>
-              <div>
-                <div className="v" style={{ color: 'var(--loss)' }}>{((avgLossKwh * homes * rows.length * settings.home.gridKgCo2PerKwh) / 1000).toFixed(1)} t</div>
-                <div className="k">Extra CO₂ when the grid makes up the shortfall</div>
-              </div>
-            </div>
-          </div>
+          <ImpactBoard rows={rows} homes={homes} setHomes={setHomes} settings={settings} rate={rate} group={group} onPick={onPick} />
         </>
       )}
     </>
@@ -274,8 +258,8 @@ function StationsTable({ stations, onPick }) {
   if (!stations.length) {
     return (
       <div className="card section">
-        Official DOE readings are not available right now. Check{' '}
-        <a href={DOE_SOURCE_URL} target="_blank" rel="noreferrer">MyEQMS (DOE)</a> directly.
+        {tr('Official DOE readings are not available right now. Check')}{' '}
+        <a href={DOE_SOURCE_URL} target="_blank" rel="noreferrer">MyEQMS (DOE)</a> {tr('directly.')}
       </div>
     );
   }
@@ -289,10 +273,10 @@ function StationsTable({ stations, onPick }) {
     <div className="card section">
       <div className="spread">
         <div>
-          <h2>All {stations.length} DOE monitoring stations</h2>
+          <h2>{tr('All {n} DOE monitoring stations', { n: stations.length })}</h2>
           <p className="lede">
-            Official Air Pollutant Index, latest hour ({fmtTime(latestT, 8 * 3600, { weekday: 'short', hour: 'numeric', minute: '2-digit' })}).
-            Source: <a href={DOE_SOURCE_URL} target="_blank" rel="noreferrer">DOE MyEQMS</a>.
+            {tr('Official Air Pollutant Index, latest hour ({time}).', { time: fmtTime(latestT, 8 * 3600, { weekday: 'short', hour: 'numeric', minute: '2-digit' }) })}{' '}
+            {tr('Source:')} <a href={DOE_SOURCE_URL} target="_blank" rel="noreferrer">DOE MyEQMS</a>.
           </p>
         </div>
         <div className="chips">
@@ -300,7 +284,7 @@ function StationsTable({ stations, onPick }) {
             const l = doeLevel(stations.find((s) => doeLevel(s.latest.api).label === k).latest.api);
             return (
               <span key={k} className="badge" style={{ background: l.color, color: l.ink, fontSize: 12.5 }}>
-                {n} {k}
+                {n} {tr(k)}
               </span>
             );
           })}
@@ -311,10 +295,10 @@ function StationsTable({ stations, onPick }) {
           <thead>
             <tr>
               <th>#</th>
-              <th>Station</th>
+              <th>{tr('Station')}</th>
               <th>API</th>
-              <th>Status</th>
-              <th>Dominant pollutant</th>
+              <th>{tr('Status')}</th>
+              <th>{tr('Dominant pollutant')}</th>
             </tr>
           </thead>
           <tbody>
@@ -324,8 +308,8 @@ function StationsTable({ stations, onPick }) {
                 <tr
                   key={s.id}
                   className="clickable"
-                  title="Open this location"
-                  onClick={() => onPick({ name: s.name, area: `${s.state} · DOE station`, lat: s.lat, lon: s.lon })}
+                  title={tr('Open this location')}
+                  onClick={() => onPick({ name: s.name, area: `${s.state} · ${tr('DOE station')}`, lat: s.lat, lon: s.lon })}
                 >
                   <td className="rank">{i + 1}</td>
                   <td>
@@ -335,8 +319,8 @@ function StationsTable({ stations, onPick }) {
                   <td>
                     <span className="badge" style={{ background: l.color, color: l.ink }}>{s.latest.api}</span>
                   </td>
-                  <td className="small">{l.label}</td>
-                  <td className="small">{DOE_SYMBOLS[s.latest.symbol] || '—'}</td>
+                  <td className="small">{tr(l.label)}</td>
+                  <td className="small">{tr(DOE_SYMBOLS[s.latest.symbol]) || '—'}</td>
                 </tr>
               );
             })}

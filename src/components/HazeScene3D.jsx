@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { aerosolTransmission } from '../lib/model.js';
 import { hazeLevel } from '../lib/aqi.js';
+import { tr } from '../lib/i18n.js';
 
 // A small dependency-free 3D scene (canvas + perspective projection):
 // a row of terrace homes with rooftop solar panels, the sun, sunlight rays and haze
@@ -355,18 +356,18 @@ export default function HazeScene3D({
           role="img"
           aria-label={
             airMode
-              ? `3D view of terrace homes and a Sime Darby Property signboard, with haze matching the current air quality reading`
-              : `3D view of terrace homes with solar panels in ${level.label.toLowerCase()}; panels receive about ${Math.round(share * 100)}% of normal sunlight`
+              ? tr('3D view of terrace homes and a Sime Darby Property signboard, with haze matching the current air quality reading')
+              : tr('3D view of terrace homes with solar panels in {level}; panels receive about {pct}% of normal sunlight', { level: tr(level.label).toLowerCase(), pct: Math.round(share * 100) })
           }
           onPointerDown={onDown}
           onPointerMove={onMove}
           onPointerUp={onUp}
           onPointerLeave={onUp}
         />
-        <div className="scene3d-badge">3D · drag to rotate</div>
+        <div className="scene3d-badge">3D · {tr('drag to rotate')}</div>
         {airMode ? (
           <div className="scene3d-readout">
-            <div className="k">{label || 'Air right now'}</div>
+            <div className="k">{label || tr('Air right now')}</div>
             {aqi !== null && (
               <div className="v">
                 {Math.round(aqi)}
@@ -379,26 +380,26 @@ export default function HazeScene3D({
                 <small> API · DOE</small>
               </div>
             )}
-            <div className="k">Haze shown to match the reading</div>
+            <div className="k">{tr('Haze shown to match the reading')}</div>
           </div>
         ) : (
           <div className="scene3d-readout">
-            <div className="k">{label || 'Haze over your roof'}</div>
+            <div className="k">{label || tr('Haze over your roof')}</div>
             <div className="v">
               {Math.round(share * 100)}%
-              <small>{shareForAod ? " of haze-free solar output (whole day)" : ' of normal sunlight reaches the panels'}</small>
+              <small> {shareForAod ? tr('of haze-free solar output (whole day)') : tr('of normal sunlight reaches the panels')}</small>
             </div>
             <div className="k">
-              {level.label} · AOD {aod.toFixed(2)}
+              {tr(level.label)} · AOD {aod.toFixed(2)}
             </div>
           </div>
         )}
       </div>
       {interactive && (
         <div className="scene3d-controls">
-          <label htmlFor="haze-slider">Try a haze level</label>
+          <label htmlFor="haze-slider">{tr('Try a haze level')}</label>
           <div className="scene3d-slider">
-            <span className="small muted">Clear</span>
+            <span className="small muted">{tr('Clear')}</span>
             <input
               id="haze-slider"
               type="range"
@@ -408,9 +409,9 @@ export default function HazeScene3D({
               value={aod}
               onChange={(e) => setAod(parseFloat(e.target.value))}
             />
-            <span className="small muted">Severe</span>
+            <span className="small muted">{tr('Severe')}</span>
             <button className="chip" onClick={() => setAod(aodToday)} disabled={Math.abs(aod - aodToday) < 0.01}>
-              Reset to today
+              {tr('Reset to today')}
             </button>
           </div>
         </div>

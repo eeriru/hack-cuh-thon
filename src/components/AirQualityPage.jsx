@@ -11,6 +11,12 @@ import { airSummary } from '../lib/summary.js';
 import HazeScene3D from './HazeScene3D.jsx';
 import { TOWNSHIPS } from '../lib/places.js';
 import { useAsync, Loading, fmtTime } from './common.jsx';
+import OutdoorCard from './OutdoorCard.jsx';
+import { tr } from '../lib/i18n.js';
+import { lazy, Suspense } from 'react';
+
+// The map library is large, so it loads only when the Air quality page needs it.
+const HazeSourceMap = lazy(() => import('./HazeSourceMap.jsx'));
 
 // Air quality comes only from IQAir and the Department of Environment (DOE).
 
@@ -94,7 +100,7 @@ export default function AirQualityPage({ place, engine, go }) {
         <div className="banner" role="status">
           <span aria-hidden="true">ℹ️</span>
           <span>
-            {iq.data.error}. {st ? 'Showing the official DOE reading as the main number.' : ''}
+            {iq.data.error}. {st ? tr('Showing the official DOE reading as the main number.') : ''}
           </span>
         </div>
       )}
@@ -102,9 +108,9 @@ export default function AirQualityPage({ place, engine, go }) {
         <h1>{place.name}</h1>
         <span className="sub">{place.area}</span>
         <span className="stamp">
-          {iqa && iqaTs ? `IQAir updated ${fmtTime(iqaTs, MY)}` : ''}
+          {iqa && iqaTs ? tr('IQAir updated {time}', { time: fmtTime(iqaTs, MY) }) : ''}
           {iqa && iqaTs && st ? ' · ' : ''}
-          {st ? `DOE reading for ${fmtTime(reading.t, MY)}` : ''}
+          {st ? tr('DOE reading for {time}', { time: fmtTime(reading.t, MY) }) : ''}
         </span>
       </div>
 
@@ -119,16 +125,16 @@ export default function AirQualityPage({ place, engine, go }) {
 
       {!iqa && !st ? (
         <div className="card section">
-          <h2>Air quality readings unavailable</h2>
+          <h2>{tr('Air quality readings unavailable')}</h2>
           <p className="lede" style={{ marginBottom: 0 }}>
-            Neither IQAir nor the DOE has a current reading for this location
-            {doe.data ? ' (the nearest DOE station is more than 60 km away or has not reported in 6 hours)' : ''}. Check{' '}
-            <a href={IQAIR_URL} target="_blank" rel="noreferrer">IQAir</a> or{' '}
-            <a href={DOE_SOURCE_URL} target="_blank" rel="noreferrer">MyEQMS (DOE)</a> directly.
+            {tr('Neither IQAir nor the DOE has a current reading for this location')}
+            {doe.data ? ` ${tr('(the nearest DOE station is more than 60 km away or has not reported in 6 hours)')}` : ''}. {tr('Check')}{' '}
+            <a href={IQAIR_URL} target="_blank" rel="noreferrer">IQAir</a> {tr('or')}{' '}
+            <a href={DOE_SOURCE_URL} target="_blank" rel="noreferrer">MyEQMS (DOE)</a> {tr('directly.')}
           </p>
         </div>
       ) : (
-        <section className="hero section" aria-label="Current air quality">
+        <section className="hero section" aria-label={tr('Current air quality')}>
           {iqa ? (
             <div className="hero-aqi" style={{ background: il.color, color: il.ink }}>
               <span className="label">
@@ -137,27 +143,27 @@ export default function AirQualityPage({ place, engine, go }) {
               </span>
               <div className="big">
                 <span className="num">{Math.round(iqa.aqius)}</span>
-                <span className="cat">{il.label}</span>
+                <span className="cat">{tr(il.label)}</span>
                 <span className="face" aria-hidden="true">{il.face}</span>
               </div>
               <span className="main-pol">
-                {IQAIR_POLLUTANTS[iqa.mainus] ? `Main pollutant: ${IQAIR_POLLUTANTS[iqa.mainus]}` : ''}
+                {IQAIR_POLLUTANTS[iqa.mainus] ? `${tr('Main pollutant')}: ${tr(IQAIR_POLLUTANTS[iqa.mainus])}` : ''}
               </span>
               <AqiScale aqi={iqa.aqius} />
             </div>
           ) : (
             <div className="hero-aqi" style={{ background: dl.color, color: dl.ink }}>
               <span className="label">
-                Official API · Department of Environment
+                {tr('Official API · Department of Environment')}
                 <Tip term="doeApi" />
               </span>
               <div className="big">
                 <span className="num">{reading.api}</span>
-                <span className="cat">{dl.label}</span>
+                <span className="cat">{tr(dl.label)}</span>
               </div>
               <span className="main-pol">
-                {DOE_SYMBOLS[reading.symbol] ? `Dominant pollutant: ${DOE_SYMBOLS[reading.symbol]} · ` : ''}
-                Station: {st.name} ({km(official.distanceKm)} km away)
+                {DOE_SYMBOLS[reading.symbol] ? `${tr('Dominant pollutant')}: ${tr(DOE_SYMBOLS[reading.symbol])} · ` : ''}
+                {tr('Station: {name} ({km} km away)', { name: st.name, km: km(official.distanceKm) })}
               </span>
               <DoeScale api={reading.api} />
             </div>
@@ -166,38 +172,38 @@ export default function AirQualityPage({ place, engine, go }) {
             {st && (
               <div className="stat" style={{ gridColumn: '1 / -1' }}>
                 <div className="k">
-                  Official DOE API · {st.name}
+                  {tr('Official DOE API')} · {st.name}
                   <Tip term="doeApi" />
                 </div>
                 <div className="v">
                   <span className="badge" style={{ background: dl.color, color: dl.ink, fontSize: 20, padding: '2px 10px' }}>{reading.api}</span>{' '}
-                  {dl.label}
-                  <small>{km(official.distanceKm)} km away</small>
+                  {tr(dl.label)}
+                  <small>{tr('{km} km away', { km: km(official.distanceKm) })}</small>
                 </div>
               </div>
             )}
             {iqa ? (
               <>
                 <div className="stat">
-                  <div className="k">Conditions</div>
-                  <div className="v" style={{ fontSize: 18 }}>{IQAIR_CONDITIONS[(w.icon || '').slice(0, 2)] || '—'}</div>
+                  <div className="k">{tr('Conditions')}</div>
+                  <div className="v" style={{ fontSize: 18 }}>{tr(IQAIR_CONDITIONS[(w.icon || '').slice(0, 2)]) || '—'}</div>
                 </div>
                 <div className="stat">
-                  <div className="k">Temperature</div>
+                  <div className="k">{tr('Temperature')}</div>
                   <div className="v">
                     {w.tempC ?? '–'}
                     <small>°C</small>
                   </div>
                 </div>
                 <div className="stat">
-                  <div className="k">Humidity</div>
+                  <div className="k">{tr('Humidity')}</div>
                   <div className="v">
                     {w.humidity ?? '–'}
                     <small>%</small>
                   </div>
                 </div>
                 <div className="stat">
-                  <div className="k">Wind</div>
+                  <div className="k">{tr('Wind')}</div>
                   <div className="v">
                     {w.windMs !== null && w.windMs !== undefined ? Math.round(w.windMs * 3.6) : '–'}
                     <small>km/h</small>
@@ -207,7 +213,7 @@ export default function AirQualityPage({ place, engine, go }) {
             ) : (
               <div className="stat" style={{ gridColumn: '1 / -1' }}>
                 <div className="k">IQAir</div>
-                <div className="v" style={{ fontSize: 16 }}>No IQAir reading right now</div>
+                <div className="v" style={{ fontSize: 16 }}>{tr('No IQAir reading right now')}</div>
               </div>
             )}
           </div>
@@ -219,7 +225,7 @@ export default function AirQualityPage({ place, engine, go }) {
           <HazeScene3D
             aqi={iqa ? iqa.aqius : null}
             doeApi={st ? reading.api : null}
-            label={`Right now · ${place.name}`}
+            label={`${tr('Right now')} · ${place.name}`}
             signTitle={TOWNSHIPS.some((t) => t.name === place.name) ? place.name : null}
             interactive={false}
             height={300}
@@ -231,25 +237,25 @@ export default function AirQualityPage({ place, engine, go }) {
         <div className="grid grid-2 section">
           <div className="card">
             <h2>
-              IQAir and DOE side by side
+              {tr('IQAir and DOE side by side')}
               <Tip term="twoScales" label="Why are the numbers different?" />
             </h2>
-            <p className="lede">Two trusted sources, two scales. Look at the colour and the word, not just the number.</p>
+            <p className="lede">{tr('Two trusted sources, two scales. Look at the colour and the word, not just the number.')}</p>
             <div className="compare">
               <div className="cmp">
                 <div className="cmp-src">IQAir · US AQI</div>
                 {iqa ? (
                   <>
                     <span className="badge big-badge" style={{ background: il.color, color: il.ink }}>{Math.round(iqa.aqius)}</span>
-                    <div className="cmp-cat">{il.label}</div>
+                    <div className="cmp-cat">{tr(il.label)}</div>
                     <div className="small muted">
                       {iqa.city}, {iqa.state}
-                      {IQAIR_POLLUTANTS[iqa.mainus] ? ` · ${IQAIR_POLLUTANTS[iqa.mainus]}` : ''}
+                      {IQAIR_POLLUTANTS[iqa.mainus] ? ` · ${tr(IQAIR_POLLUTANTS[iqa.mainus])}` : ''}
                       {iqaTs ? ` · ${fmtTime(iqaTs, MY)}` : ''}
                     </div>
                   </>
                 ) : (
-                  <div className="small muted">Not available right now</div>
+                  <div className="small muted">{tr('Not available right now')}</div>
                 )}
               </div>
               <div className="cmp">
@@ -257,34 +263,35 @@ export default function AirQualityPage({ place, engine, go }) {
                 {st ? (
                   <>
                     <span className="badge big-badge" style={{ background: dl.color, color: dl.ink }}>{reading.api}</span>
-                    <div className="cmp-cat">{dl.label}</div>
+                    <div className="cmp-cat">{tr(dl.label)}</div>
                     <div className="small muted">
-                      {st.name} station, {km(official.distanceKm)} km
-                      {DOE_SYMBOLS[reading.symbol] ? ` · ${DOE_SYMBOLS[reading.symbol]}` : ''} · {fmtTime(reading.t, MY)}
+                      {tr('{name} station, {km} km', { name: st.name, km: km(official.distanceKm) })}
+                      {DOE_SYMBOLS[reading.symbol] ? ` · ${tr(DOE_SYMBOLS[reading.symbol])}` : ''} · {fmtTime(reading.t, MY)}
                     </div>
                   </>
                 ) : (
-                  <div className="small muted">No DOE station within 60 km</div>
+                  <div className="small muted">{tr('No DOE station within 60 km')}</div>
                 )}
               </div>
             </div>
             <p className="small muted" style={{ margin: '12px 0 0' }}>
-              The numbers differ because IQAir uses the US scale and adds its own sensors, while the DOE uses Malaysia's official
-              scale at one government station. The DOE figure is the one quoted in official announcements, such as school closures.
+              {tr(
+                "The numbers differ because IQAir uses the US scale and adds its own sensors, while the DOE uses Malaysia's official scale at one government station. The DOE figure is the one quoted in official announcements, such as school closures."
+              )}
             </p>
           </div>
           <div className="card">
-            <h2>Health advice</h2>
+            <h2>{tr('Health advice')}</h2>
             {st && (
               <p className="lede" style={{ color: 'var(--ink-2)' }}>
-                <b>DOE advice:</b> {DOE_ADVICE[dl.key]}
+                <b>{tr('DOE advice:')}</b> {tr(DOE_ADVICE[dl.key])}
               </p>
             )}
             <div className="advice">
               {(ADVICE[tipsKey] || ADVICE.good).map(([k, v]) => (
                 <div key={k}>
-                  <b>{k}</b>
-                  {v}
+                  <b>{tr(k)}</b>
+                  {tr(v)}
                 </div>
               ))}
             </div>
@@ -292,15 +299,21 @@ export default function AirQualityPage({ place, engine, go }) {
         </div>
       )}
 
+      <OutdoorCard data={solarData.data} todayStr={today} />
+
+      <Suspense fallback={<div className="card section">{tr('Loading the haze source map…')}</div>}>
+        <HazeSourceMap place={place} windFromDeg={solarData.data?.current?.windDir ?? (w.windDir ?? null)} windKmh={solarData.data?.current?.wind ?? (w.windMs ? w.windMs * 3.6 : null)} />
+      </Suspense>
+
       <div className="grid grid-2 section">
         {st ? (
           <div className="card">
             <div className="spread">
-              <h2>Past 24 hours (DOE)</h2>
+              <h2>{tr('Past 24 hours (DOE)')}</h2>
               <span className="badge" style={{ background: dl.color, color: dl.ink }}>API {reading.api}</span>
             </div>
             <p className="lede">
-              Official hourly API at {st.name}. Source:{' '}
+              {tr('Official hourly API at {name}. Source:', { name: st.name })}{' '}
               <a href={DOE_SOURCE_URL} target="_blank" rel="noreferrer">DOE MyEQMS</a>.
             </p>
             <AqiBars
@@ -317,9 +330,9 @@ export default function AirQualityPage({ place, engine, go }) {
           </div>
         ) : (
           <div className="card">
-            <h2>Past 24 hours</h2>
+            <h2>{tr('Past 24 hours')}</h2>
             <p className="lede" style={{ marginBottom: 0 }}>
-              Hourly history comes from DOE stations in Malaysia; there is none within 60 km of this location.
+              {tr('Hourly history comes from DOE stations in Malaysia; there is none within 60 km of this location.')}
             </p>
           </div>
         )}
@@ -335,32 +348,32 @@ function SolarTeaser({ solar, loading, go }) {
   const fmt = (x) => (x ? x.output.toFixed(1) : '–');
   return (
     <div className="card" style={{ background: 'var(--ink)', color: 'var(--paper)', borderColor: 'var(--ink)' }}>
-      <h2 style={{ color: 'var(--paper)' }}>☀ Solar forecast</h2>
+      <h2 style={{ color: 'var(--paper)' }}>☀ {tr('Solar forecast')}</h2>
       <p className="lede" style={{ color: '#c7bfae' }}>
-        For a 5 kW rooftop system here. Uses satellite haze, cloud and sunlight data.
-        {solar?.source === 'demo' ? ' Simulated (live data unreachable).' : ''}
+        {tr('For a 5 kW rooftop system here. Uses satellite haze, cloud and sunlight data.')}
+        {solar?.source === 'demo' ? ` ${tr('Simulated (live data unreachable).')}` : ''}
       </p>
       <div className="headline-stats">
         <div className="hs">
-          <div className="k">Today</div>
+          <div className="k">{tr('Today')}</div>
           <div className="v">
             {loading ? '…' : fmt(t)}
-            <small>{t ? ` kWh · haze −${t.lossPct.toFixed(0)}%` : ''}</small>
+            <small>{t ? ` kWh · ${tr('haze')} −${t.lossPct.toFixed(0)}%` : ''}</small>
           </div>
         </div>
         <div className="hs">
-          <div className="k">Tomorrow</div>
+          <div className="k">{tr('Tomorrow')}</div>
           <div className="v">
             {loading ? '…' : fmt(m)}
-            <small>{m ? ` kWh · haze −${m.lossPct.toFixed(0)}%` : ''}</small>
+            <small>{m ? ` kWh · ${tr('haze')} −${m.lossPct.toFixed(0)}%` : ''}</small>
           </div>
         </div>
       </div>
       <p style={{ color: '#d8d1c2', fontSize: 13.5 }}>
-        Expected output after clouds, heat, haze and dust. See where your solar goes, the 7-day forecast and a battery plan.
+        {tr('Expected output after clouds, heat, haze and dust. See where your solar goes, the 7-day forecast and a battery plan.')}
       </p>
       <button className="btn" style={{ background: 'var(--sun)', borderColor: 'var(--sun)', color: 'var(--ink)' }} onClick={() => go('forecast')}>
-        Open solar forecast →
+        {tr('Open weather & solar')} →
       </button>
     </div>
   );

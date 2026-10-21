@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { GLOSSARY } from '../lib/glossary.js';
+import { tr } from '../lib/i18n.js';
 
 /** Small ⓘ button that explains a term in plain words. Tap/click to open, tap outside or Esc to close. */
 export function Tip({ term, text, label = 'What does this mean?' }) {
@@ -8,7 +9,7 @@ export function Tip({ term, text, label = 'What does this mean?' }) {
   const ref = useRef(null);
   const btnRef = useRef(null);
   const id = useId();
-  const body = text || GLOSSARY[term];
+  const body = tr(text || GLOSSARY[term]);
   // Keep the bubble inside the screen, centred under the button where possible
   const place = () => {
     const b = btnRef.current?.getBoundingClientRect();
@@ -50,7 +51,7 @@ export function Tip({ term, text, label = 'What does this mean?' }) {
         ref={btnRef}
         type="button"
         className="tipbtn"
-        aria-label={label}
+        aria-label={tr(label)}
         aria-expanded={open}
         aria-controls={id}
         onClick={(e) => {
@@ -79,8 +80,8 @@ export function InShort({ items, title = 'In short' }) {
   const list = items.filter(Boolean);
   if (!list.length) return null;
   return (
-    <section className="inshort section" aria-label={title}>
-      <div className="inshort-title">{title}</div>
+    <section className="inshort section" aria-label={tr(title)}>
+      <div className="inshort-title">{tr(title)}</div>
       <ul>
         {list.map((it, i) => (
           <li key={i} className={it.tone ? `tone-border-${it.tone}` : ''}>
@@ -99,8 +100,8 @@ export function More({ title, hint, children, defaultOpen = false }) {
     <details className="more card section" open={defaultOpen}>
       <summary>
         <span>
-          <b>{title}</b>
-          {hint && <small>{hint}</small>}
+          <b>{tr(title)}</b>
+          {hint && <small>{tr(hint)}</small>}
         </span>
         <span className="more-chev" aria-hidden="true">⌄</span>
       </summary>
@@ -129,26 +130,26 @@ export function Welcome({ go }) {
     }
   };
   return (
-    <section className="welcome section" aria-label="Welcome">
-      <button className="welcome-x" onClick={close} aria-label="Close welcome message">×</button>
-      <h2>Welcome to SuriaHaze 👋</h2>
-      <p>Your township's air, weather and solar power, explained simply.</p>
+    <section className="welcome section" aria-label={tr('Welcome')}>
+      <button className="welcome-x" onClick={close} aria-label={tr('Close welcome message')}>×</button>
+      <h2>{tr('Welcome to SuriaHaze')} 👋</h2>
+      <p>{tr("Your township's air, weather and solar power, explained simply.")}</p>
       <ol>
         <li>
-          <b>Pick your place</b> from the buttons or the search box.
+          <b>{tr('Pick your place')}</b> {tr('from the buttons or the search box.')}
         </li>
         <li>
-          <button className="linkish" onClick={() => go('air')}>Air quality</button> tells you if it's safe to be outside.
+          <button className="linkish" onClick={() => go('air')}>{tr('Air quality')}</button> {tr("tells you if it's safe to be outside, when to exercise, and where the haze is coming from.")}
         </li>
         <li>
-          <button className="linkish" onClick={() => go('forecast')}>Weather & solar</button> shows heat, rain and the week ahead, plus how much
-          power your roof will make and what's stealing it (clouds, heat, haze, dust).
+          <button className="linkish" onClick={() => go('forecast')}>{tr('Weather & solar')}</button>{' '}
+          {tr("shows heat, rain and the week ahead, plus how much power your roof will make and what's stealing it (clouds, heat, haze, dust).")}
         </li>
       </ol>
       <p className="small muted">
-        Tap any <span className="tipbtn static" aria-hidden="true">i</span> for a plain-language explanation.
+        {tr('Tap any')} <span className="tipbtn static" aria-hidden="true">i</span> {tr('for a plain-language explanation.')}
       </p>
-      <button className="btn" onClick={close}>Got it</button>
+      <button className="btn" onClick={close}>{tr('Got it')}</button>
     </section>
   );
 }

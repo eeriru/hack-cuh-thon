@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { aqiLevel } from '../lib/aqi.js';
 import { fmtHour } from '../lib/battery.js';
+import { tr } from '../lib/i18n.js';
 
 const W = 720;
 
@@ -15,7 +16,7 @@ export function AqiBars({ points, height = 170, level = aqiLevel, unit = 'AQI', 
   const ticks = tickList.filter((v) => v <= max);
   return (
     <div className="chart-box">
-      <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Hourly air quality">
+      <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={tr('Hourly air quality')}>
         {ticks.map((v) => (
           <g key={v}>
             <line x1={pad.l} x2={W - pad.r} y1={y(v)} y2={y(v)} stroke="var(--line)" strokeDasharray={v ? '3 4' : ''} />
@@ -50,7 +51,7 @@ export function AqiBars({ points, height = 170, level = aqiLevel, unit = 'AQI', 
           className="tip"
           style={{ left: `${((pad.l + (hover + 0.5) * bw) / W) * 100}%`, top: `${(y(points[hover].aqi || 0) / H) * 100}%` }}
         >
-          <b>{points[hover].sub}</b> · {unit} {points[hover].aqi === null || points[hover].aqi === undefined ? 'no reading' : Math.round(points[hover].aqi)} · {level(points[hover].aqi).short || level(points[hover].aqi).label}
+          <b>{points[hover].sub}</b> · {unit} {points[hover].aqi === null || points[hover].aqi === undefined ? tr('no reading') : Math.round(points[hover].aqi)} · {tr(level(points[hover].aqi).short || level(points[hover].aqi).label)}
         </div>
       )}
     </div>
@@ -86,7 +87,7 @@ export function SolarChart({ rows, satellite, height = 280 }) {
   const h = hover !== null ? day[hover] : null;
   return (
     <div className="chart-box">
-      <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Sunlight through the day with and without haze">
+      <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={tr('Sunlight through the day with and without haze')}>
         <defs>
           <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
             <rect width="6" height="6" fill="#f6c3a8" />
@@ -129,12 +130,12 @@ export function SolarChart({ rows, satellite, height = 280 }) {
       </svg>
       {h && (
         <div className="tip" style={{ left: `${(x(hover) / W) * 100}%`, top: `${(y(h.ghiClean) / H) * 100}%` }}>
-          <b>{fmtHour(h.localHour)}–{fmtHour(h.localHour + 1)}</b> · no haze {Math.round(h.ghiClean)} · with haze{' '}
+          <b>{fmtHour(h.localHour)}–{fmtHour(h.localHour + 1)}</b> · {tr('no haze')} {Math.round(h.ghiClean)} · {tr('with haze')}{' '}
           {Math.round(h.ghiHaze)} W/m²
-          {sat(h) !== undefined && <> · satellite {Math.round(sat(h))}</>}
+          {sat(h) !== undefined && <> · {tr('satellite')} {Math.round(sat(h))}</>}
           <br />
-          Haze {h.aod?.toFixed(2) ?? '–'} AOD · PM2.5 {Math.round(h.pm2_5 ?? 0)} · cloud {Math.round(h.cloud_low ?? 0)}% low ·
-          lost {h.lossKwh.toFixed(2)} kWh
+          {tr('Haze')} {h.aod?.toFixed(2) ?? '–'} AOD · PM2.5 {Math.round(h.pm2_5 ?? 0)} · {tr('cloud')} {Math.round(h.cloud_low ?? 0)}% {tr('low')} ·{' '}
+          {tr('lost')} {h.lossKwh.toFixed(2)} kWh
         </div>
       )}
     </div>
@@ -149,7 +150,7 @@ export function SocChart({ standard, smart, height = 150 }) {
   const y = (v) => pad.t + (H - pad.t - pad.b) * (1 - v / 100);
   const line = (arr) => arr.map((v, h) => `${h ? 'L' : 'M'}${x(h).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
   return (
-    <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Battery charge through the day">
+    <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={tr('Battery charge through the day')}>
       {[0, 50, 100].map((v) => (
         <g key={v}>
           <line x1={pad.l} x2={W - pad.r} y1={y(v)} y2={y(v)} stroke="var(--line)" strokeDasharray={v ? '3 4' : ''} />
@@ -189,7 +190,7 @@ export function WeatherChart({ rows, height = 220 }) {
   const h = hover !== null ? rows[hover] : null;
   return (
     <div className="chart-box">
-      <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Temperature and rain for the next hours">
+      <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={tr('Temperature and rain for the next hours')}>
         {[tMin, Math.round((tMin + tMax) / 2), tMax].map((v) => (
           <g key={v}>
             <line x1={pad.l} x2={W - pad.r} y1={yT(v)} y2={yT(v)} stroke="var(--line)" strokeDasharray="3 4" />
@@ -210,9 +211,9 @@ export function WeatherChart({ rows, height = 220 }) {
       </svg>
       {h && (
         <div className="tip" style={{ left: `${(x(hover) / W) * 100}%`, top: `${(yT(h.temp ?? tMin) / H) * 100}%` }}>
-          <b>{h.sub}</b> · {Math.round(h.temp)}°C, feels {h.feels !== null && h.feels !== undefined ? Math.round(h.feels) : '–'}°C
+          <b>{h.sub}</b> · {Math.round(h.temp)}°C, {tr('feels')} {h.feels !== null && h.feels !== undefined ? Math.round(h.feels) : '–'}°C
           <br />
-          Rain {(h.rain ?? 0).toFixed(1)} mm{h.rainChance !== null && h.rainChance !== undefined ? ` · ${Math.round(h.rainChance)}% chance` : ''}
+          {tr('Rain')} {(h.rain ?? 0).toFixed(1)} mm{h.rainChance !== null && h.rainChance !== undefined ? ` · ${Math.round(h.rainChance)}% ${tr('chance')}` : ''}
         </div>
       )}
     </div>

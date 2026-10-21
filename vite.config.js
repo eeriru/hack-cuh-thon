@@ -1,12 +1,39 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import { parseFirmsCsv, REGION_BBOX } from './src/lib/fires.js';
+
+// Local stand-in for api/fires.js (NASA FIRMS fire hotspots). Put FIRMS_MAP_KEY=... in .env.local.
+function firesDevApi(env) {
+  return {
+    name: 'fires-dev-api',
+    configureServer(server) {
+      server.middlewares.use('/api/fires', async (req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+        if (!env.FIRMS_MAP_KEY) {
+          res.statusCode = 501;
+          return res.end(JSON.stringify({ error: 'FIRMS_MAP_KEY is not set in .env.local', notConfigured: true }));
+        }
+        const { west, south, east, north } = REGION_BBOX;
+        try {
+          const r = await fetch(`https://firms.modaps.eosdis.nasa.gov/api/area/csv/${env.FIRMS_MAP_KEY}/VIIRS_SNPP_NRT/${west},${south},${east},${north}/2`);
+          const text = await r.text();
+          if (!text.startsWith('latitude')) throw new Error(text.slice(0, 120));
+          res.end(JSON.stringify({ fires: parseFirmsCsv(text), source: 'NASA FIRMS VIIRS S-NPP', days: 2 }));
+        } catch (e) {
+          res.statusCode = 502;
+          res.end(JSON.stringify({ error: String(e.message || e) }));
+        }
+      });
+    },
+  };
+}
 
 // During `npm run dev`, these proxies stand in for the Vercel functions in api/.
 // For IQAir locally, put IQAIR_API_KEY=... in a file called .env.local (never commit it).
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
-    plugins: [react()],
+    plugins: [react(), firesDevApi(env)],
     server: {
       proxy: {
         '/api/doe': {

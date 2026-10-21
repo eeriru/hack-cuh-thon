@@ -6,6 +6,8 @@ import { planDay, hourRanges } from '../src/lib/battery.js';
 import { aqiFromPm25 } from '../src/lib/aqi.js';
 import { makeDemoData } from '../src/lib/demo.js';
 import { dayModelHours, addDays, todayMY } from '../src/lib/api.js';
+import { tr, setLang } from '../src/lib/i18n.js';
+import { MS } from '../src/lib/i18n-ms.js';
 
 let passed = 0;
 const test = (name, fn) => {
@@ -396,6 +398,114 @@ test('solar summary: output, value, share of home use, main cause and tip', () =
   assert.match(text, /clouds & rain take the most \(5\.7 kWh\); haze cuts 10%/);
   assert.match(text, /best Saturday \(25 kWh\), weakest Wednesday \(12 kWh\)/);
   assert.match(text, /washing machine/);
+});
+
+import { cleaningAdvice } from '../src/lib/cleaning.js';
+import { rateHour, outdoorPlan } from '../src/lib/outdoor.js';
+import { planEv, pluggedHours, DEFAULT_EV } from '../src/lib/ev.js';
+import { townshipImpact } from '../src/lib/impact.js';
+import { hazeSources, bearing, distanceKm, parseFirmsCsv, nearestRegion } from '../src/lib/fires.js';
+import { DEFAULT_HOME } from '../src/lib/battery.js';
+
+test('cleaning: dusty panels with no rain coming → wash, and washing saves money', () => {
+  const days = [0, 1, 2, 3, 4, 5, 6].map((i) => ({ d: `d${i}`, label: `Day ${i}`, soilPct: Math.min(6, 4 + 0.4 * i), rainMm: 0, kwhBeforeDust: 20 + i }));
+  const a = cleaningAdvice(days, { rate: 0.4 });
+  assert.equal(a.action, 'wash');
+  assert.ok(a.savingKwh > 3, `saving ${a.savingKwh}`);
+  assert.ok(Math.abs(a.todayLossKwh - 0.8) < 1e-9);
+  assert.equal(a.sunniestDay, 'Day 6');
+});
+
+test('cleaning: rain tomorrow → wait; clean panels → nothing to do', () => {
+  const rainy = [
+    { label: 'Today', soilPct: 4, rainMm: 0, kwhBeforeDust: 20 },
+    { label: 'Tomorrow', soilPct: 4.4, rainMm: 12, kwhBeforeDust: 12 },
+    { label: 'Fri', soilPct: 1, rainMm: 0, kwhBeforeDust: 22 },
+  ];
+  const a = cleaningAdvice(rainy);
+  assert.equal(a.action, 'wait-rain');
+  assert.equal(a.rainDay, 'Tomorrow');
+  assert.equal(cleaningAdvice([{ label: 'Today', soilPct: 1.4, rainMm: 0, kwhBeforeDust: 20 }]).action, 'clean');
+});
+
+test('outdoor: rates hours and finds the best slot', () => {
+  const base = Date.UTC(2026, 9, 21, 22, 0) / 1000; // 6am local (UTC+8)
+  const hours = Array.from({ length: 18 }, (_, i) => {
+    const local = 6 + i;
+    return { t: base + i * 3600, us_aqi: 40, temp: 24 + (local > 10 && local < 17 ? 8 : 0), rh: 75, uv: local > 10 && local < 15 ? 9 : 1, rain: local === 16 ? 5 : 0, rain_chance: 10 };
+  });
+  const p = outdoorPlan(hours, { now: base });
+  assert.equal(p.best[0].startHour, 6);
+  assert.equal(p.best[0].level, 'great');
+  const storm = rateHour({ t: base + 10 * 3600, us_aqi: 40, temp: 30, rh: 60, rain: 5, weather_code: 95 });
+  assert.equal(storm.level, 'avoid');
+  assert.ok(storm.reasons.includes('thunderstorm'));
+  // Sensitive people: AQI 120 is "avoid"; for others it's only "hazy".
+  const hazy = { t: base, us_aqi: 120, temp: 26, rh: 70, uv: 1 };
+  assert.equal(rateHour(hazy, { sensitive: true }).level, 'avoid');
+  assert.notEqual(rateHour(hazy).level, 'avoid');
+});
+
+test('EV: smart charging uses spare solar and off-peak hours, never costs more', () => {
+  const spare = new Array(24).fill(0);
+  [11, 12, 13, 14].forEach((h) => (spare[h] = 2));
+  const home = { ...DEFAULT_HOME };
+  const away = planEv(spare, { ...DEFAULT_EV, kmPerDay: 60 }, home);
+  assert.ok(Math.abs(away.needKwh - 10) < 1e-9);
+  assert.equal(away.smart.solarKwh, 0); // car is at work while the sun shines
+  assert.ok(away.smart.grid.slice(14, 22).every((g) => g === 0), 'no peak-hour charging');
+  assert.ok(away.savingRm > 0);
+  const wfh = planEv(spare, { ...DEFAULT_EV, kmPerDay: 60, homeDaytime: true }, home);
+  assert.ok(Math.abs(wfh.smart.solarKwh - 8) < 1e-9);
+  assert.ok(wfh.smart.costRm <= wfh.standard.costRm);
+  assert.deepEqual(pluggedHours({ leaveHour: 8, arriveHour: 18 }).length, 14);
+});
+
+test('township impact: totals add up and sort by energy made', () => {
+  const imp = townshipImpact(
+    [
+      { place: { name: 'A' }, output: 15, lossKwh: 2 },
+      { place: { name: 'B' }, output: 20, lossKwh: 1 },
+    ],
+    { homes: 100, rate: 0.5, co2PerKwh: 0.7 }
+  );
+  assert.equal(imp.list[0].place.name, 'B');
+  assert.ok(Math.abs(imp.total.mwh - 3.5) < 1e-9);
+  assert.ok(Math.abs(imp.total.rm - 1750) < 1e-9);
+  assert.ok(Math.abs(imp.total.co2Kg - 2450) < 1e-9);
+  assert.ok(Math.abs(imp.total.lostMwh - 0.3) < 1e-9);
+  assert.equal(imp.total.homes, 200);
+});
+
+test('haze sources: fires upwind are found and named', () => {
+  const kl = { lat: 3.14, lon: 101.69 };
+  assert.ok(Math.abs(bearing(kl, { lat: 13.14, lon: 101.69 }) - 0) < 0.5);
+  assert.ok(Math.abs(distanceKm(kl, { lat: 4.14, lon: 101.69 }) - 111.2) < 1);
+  const riau = { lat: 0.6, lon: 101.4, frp: 30 };
+  const borneo = { lat: -1.8, lon: 113.5, frp: 50 };
+  // South-west wind (blowing from 220°): Riau is upwind (bearing ~186°), Kalimantan is not.
+  const s = hazeSources(kl, [riau, borneo], { windFromDeg: 200, windKmh: 15 });
+  assert.equal(s.upwindCount, 1);
+  assert.equal(s.regions[0].name, 'Riau (Sumatra)');
+  assert.ok(s.regions[0].hours > 15 && s.regions[0].hours < 25);
+  assert.equal(nearestRegion(borneo), 'Central Kalimantan');
+  const csv = 'latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,satellite,instrument,confidence,version,bright_ti5,frp,daynight\n0.5,101.4,330,0.4,0.4,2026-10-21,0612,N,VIIRS,n,2.0NRT,290,12.5,D\n1,102,300,0.4,0.4,2026-10-21,0612,N,VIIRS,l,2.0NRT,290,3,D';
+  const f = parseFirmsCsv(csv);
+  assert.equal(f.length, 1);
+  assert.equal(f[0].frp, 12.5);
+});
+
+test('Bahasa Melayu toggle translates text and keeps placeholders', () => {
+  setLang('ms');
+  assert.equal(tr('Air quality'), 'Kualiti udara');
+  assert.equal(tr('Updated {time}', { time: '3:00 pm' }), 'Dikemas kini 3:00 pm');
+  assert.equal(tr('Some text with no translation'), 'Some text with no translation');
+  setLang('en');
+  assert.equal(tr('Air quality'), 'Air quality');
+  for (const [en, ms] of Object.entries(MS)) {
+    const ph = (x) => (x.match(/\{\w+\}/g) || []).sort().join();
+    assert.equal(ph(ms), ph(en), `placeholders differ for "${en}"`);
+  }
 });
 
 console.log(`\n${passed} tests passed`);
