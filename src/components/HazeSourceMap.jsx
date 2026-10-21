@@ -26,9 +26,10 @@ export default function HazeSourceMap({ place, windFromDeg, windKmh }) {
       [REGION_BBOX.south, REGION_BBOX.west],
       [REGION_BBOX.north, REGION_BBOX.east],
     ]);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    // Standard OpenStreetMap tiles: free, no API key needed.
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 10,
-      attribution: '&copy; OpenStreetMap contributors &copy; CARTO · Fires: NASA FIRMS',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors · Fires: NASA FIRMS',
     }).addTo(map);
     mapRef.current = map;
     layerRef.current = L.layerGroup().addTo(map);
