@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { More } from './Friendly.jsx';
 import { tr } from '../lib/i18n.js';
 
@@ -39,6 +40,10 @@ export default function HomeSettings({ settings, setSettings, defaultOpen = fals
 
 export function NumField({ label, unit, value, onChange, min, max, step, hint }) {
   const id = `f-${label.replace(/\W+/g, '-')}`;
+  // What is typed is kept as text, so "15" can be typed even when the minimum is 8
+  // (the "1" on its own used to snap straight to 8). Valid numbers are saved as you type;
+  // anything out of range is pulled back into range when you leave the box.
+  const [draft, setDraft] = useState(null);
   return (
     <div className="field">
       <label htmlFor={id}>
@@ -47,13 +52,19 @@ export function NumField({ label, unit, value, onChange, min, max, step, hint })
       <input
         id={id}
         type="number"
-        value={value}
+        value={draft ?? value}
         min={min}
         max={max}
         step={step}
         onChange={(e) => {
+          setDraft(e.target.value);
           const v = parseFloat(e.target.value);
-          if (!Number.isNaN(v)) onChange(Math.min(max, Math.max(min, v)));
+          if (!Number.isNaN(v) && v >= min && v <= max) onChange(v);
+        }}
+        onBlur={() => {
+          const v = parseFloat(draft);
+          if (draft !== null && !Number.isNaN(v)) onChange(Math.min(max, Math.max(min, v)));
+          setDraft(null);
         }}
       />
       {hint && <div className="hint">{tr(hint)}</div>}

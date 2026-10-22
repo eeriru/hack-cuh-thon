@@ -103,9 +103,6 @@ export default function MethodPage({ engine }) {
           <Step title="EV charging planner">
             <P t="Daily driving × the car's energy use gives the charge needed. Solar the house and battery can't use goes to the car first; the rest comes from the grid at the cheapest hours the car is plugged in. This is compared with plugging in as soon as you get home." />
           </Step>
-          <Step title="Outdoor planner">
-            <P t="Each coming hour is rated from the air-quality forecast (US AQI), the heat index, UV and rain, with stricter air limits for children, elderly people and asthma. The best two-hour slot of each day is shown." />
-          </Step>
           <Step title="Haze source map">
             <P t="Fire hotspots from NASA's VIIRS satellites (last 2 days) are compared with the wind direction. Fires inside a 70° wedge pointing upwind, within 1,500 km, are the likely sources; they are grouped by region (e.g. Riau, Jambi, Central Kalimantan). Wind near the ground is a rough guide: smoke also travels higher up." />
           </Step>

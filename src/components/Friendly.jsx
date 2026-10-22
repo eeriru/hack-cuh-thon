@@ -145,7 +145,7 @@ export function Welcome({ go }) {
           <button className="linkish" onClick={() => go('forecast')}>{tr('Weather & solar')}</button> · {tr('heat, rain and your solar power')}
         </li>
         <li>
-          <button className="linkish" onClick={() => go('planner')}>{tr('Planner')}</button> · {tr('spare solar, battery, EV, exercise')}
+          <button className="linkish" onClick={() => go('planner')}>{tr('Planner')}</button> · {tr('spare solar, battery, EV')}
         </li>
       </ol>
       <p className="small muted">
@@ -153,5 +153,30 @@ export function Welcome({ go }) {
       </p>
       <button className="btn" onClick={close}>{tr('Got it')}</button>
     </section>
+  );
+}
+
+// A rounded, tinted tile: icon, one big value, a short label and an optional ⓘ in the corner.
+// tone: sun | sky | loss | haze | good | plain (colours from the app's own palette).
+export function Tile({ icon, value, unit, label, sub, subTone, tone = 'plain', tip, term, wide = false, valueSmall = false }) {
+  return (
+    <div className={`tile tone-${tone} ${wide ? 'wide' : ''}`}>
+      {(tip || term) && (
+        <span className="tile-tip">
+          <Tip text={tip} term={term} />
+        </span>
+      )}
+      {icon && (
+        <span className="tile-icon" aria-hidden="true">
+          {icon}
+        </span>
+      )}
+      <div className={`tile-v ${valueSmall ? 'sm' : ''}`}>
+        {value}
+        {unit && <small>{unit}</small>}
+      </div>
+      <div className="tile-k">{label}</div>
+      {sub && <div className={`tile-s ${subTone ? `tone-${subTone}` : ''}`}>{sub}</div>}
+    </div>
   );
 }

@@ -6,14 +6,11 @@ import { lossBreakdown, soilingForDate } from '../lib/losses.js';
 import { tryDoeStations, nearestStation, doeLevel, DOE_LEVELS, DOE_ADVICE, DOE_SYMBOLS, DOE_SOURCE_URL } from '../lib/doe.js';
 import { getIqair, IQAIR_POLLUTANTS, IQAIR_URL, IQAIR_CONDITIONS } from '../lib/iqair.js';
 import { AqiBars } from './charts.jsx';
-import { InShort, Tip } from './Friendly.jsx';
+import { InShort, Tip, Tile } from './Friendly.jsx';
 import { airSummary } from '../lib/summary.js';
 import HazeScene3D from './HazeScene3D.jsx';
 import { TOWNSHIPS } from '../lib/places.js';
 import { useAsync, Loading, fmtTime } from './common.jsx';
-import { readSensitive } from './OutdoorCard.jsx';
-import { outdoorPlan } from '../lib/outdoor.js';
-import { fmtHour } from '../lib/battery.js';
 import { tr } from '../lib/i18n.js';
 import { lazy, Suspense } from 'react';
 
@@ -138,7 +135,7 @@ export default function AirQualityPage({ place, engine, go }) {
           </p>
         </div>
       ) : (
-        <section className="hero section" aria-label={tr('Current air quality')}>
+        <section className="hero aq-hero section" aria-label={tr('Current air quality')}>
           {iqa ? (
             <div className="hero-aqi" style={{ background: il.color, color: il.ink }}>
               <span className="label">
@@ -172,53 +169,32 @@ export default function AirQualityPage({ place, engine, go }) {
               <DoeScale api={reading.api} />
             </div>
           )}
-          <div className="hero-side">
+          <div className="tiles hero-tiles">
             {st && (
-              <div className="stat" style={{ gridColumn: '1 / -1' }}>
-                <div className="k">
-                  {tr('Official DOE API')} · {st.name}
-                  <Tip term="doeApi" />
-                </div>
-                <div className="v">
-                  <span className="badge" style={{ background: dl.color, color: dl.ink, fontSize: 20, padding: '2px 10px' }}>{reading.api}</span>{' '}
-                  {tr(dl.label)}
-                  <small>{tr('{km} km away', { km: km(official.distanceKm) })}</small>
-                </div>
-              </div>
+              <Tile
+                wide
+                icon="🏛️"
+                tone="plain"
+                term="doeApi"
+                value={
+                  <>
+                    <span className="badge" style={{ background: dl.color, color: dl.ink, fontSize: 22, padding: '2px 12px' }}>{reading.api}</span> {tr(dl.label)}
+                  </>
+                }
+                valueSmall
+                label={`${tr('Official DOE API')} · ${st.name}`}
+                sub={tr('{km} km away', { km: km(official.distanceKm) })}
+              />
             )}
             {iqa ? (
               <>
-                <div className="stat">
-                  <div className="k">{tr('Conditions')}</div>
-                  <div className="v" style={{ fontSize: 18 }}>{tr(IQAIR_CONDITIONS[(w.icon || '').slice(0, 2)]) || '—'}</div>
-                </div>
-                <div className="stat">
-                  <div className="k">{tr('Temperature')}</div>
-                  <div className="v">
-                    {w.tempC ?? '–'}
-                    <small>°C</small>
-                  </div>
-                </div>
-                <div className="stat">
-                  <div className="k">{tr('Humidity')}</div>
-                  <div className="v">
-                    {w.humidity ?? '–'}
-                    <small>%</small>
-                  </div>
-                </div>
-                <div className="stat">
-                  <div className="k">{tr('Wind')}</div>
-                  <div className="v">
-                    {w.windMs !== null && w.windMs !== undefined ? Math.round(w.windMs * 3.6) : '–'}
-                    <small>km/h</small>
-                  </div>
-                </div>
+                <Tile icon="🌤️" tone="sky" value={tr(IQAIR_CONDITIONS[(w.icon || '').slice(0, 2)]) || '—'} valueSmall label={tr('Conditions')} />
+                <Tile icon="🌡️" tone="sun" value={w.tempC ?? '–'} unit="°C" label={tr('Temperature')} />
+                <Tile icon="💧" tone="sky" value={w.humidity ?? '–'} unit="%" label={tr('Humidity')} />
+                <Tile icon="🌬️" tone="haze" value={w.windMs !== null && w.windMs !== undefined ? Math.round(w.windMs * 3.6) : '–'} unit="km/h" label={tr('Wind')} />
               </>
             ) : (
-              <div className="stat" style={{ gridColumn: '1 / -1' }}>
-                <div className="k">IQAir</div>
-                <div className="v" style={{ fontSize: 16 }}>{tr('No IQAir reading right now')}</div>
-              </div>
+              <Tile wide icon="ℹ️" value={tr('No IQAir reading right now')} valueSmall label="IQAir" />
             )}
           </div>
         </section>
@@ -298,8 +274,6 @@ export default function AirQualityPage({ place, engine, go }) {
         </div>
       )}
 
-      <OutdoorChip data={solarData.data} today={today} go={go} />
-
       <Suspense fallback={<div className="card section">{tr('Loading the haze source map…')}</div>}>
         <HazeSourceMap place={place} windFromDeg={solarData.data?.current?.windDir ?? (w.windDir ?? null)} windKmh={solarData.data?.current?.wind ?? (w.windMs ? w.windMs * 3.6 : null)} />
       </Suspense>
@@ -345,49 +319,23 @@ function SolarTeaser({ solar, loading, go }) {
   const m = solar?.tomorrow;
   const fmt = (x) => (x ? x.output.toFixed(1) : '–');
   return (
-    <div className="card" style={{ background: 'var(--ink)', color: 'var(--paper)', borderColor: 'var(--ink)' }}>
-      <h2 style={{ color: 'var(--paper)' }}>☀ {tr('Solar forecast')} <small style={{ color: '#c7bfae', fontWeight: 500, fontSize: 13 }}>5 kW</small></h2>
-      {solar?.source === 'demo' && <p className="small" style={{ color: '#c7bfae' }}>{tr('Simulated data.')}</p>}
-      <div className="headline-stats">
-        <div className="hs">
-          <div className="k">{tr('Today')}</div>
-          <div className="v">
-            {loading ? '…' : fmt(t)}
-            <small>{t ? ` kWh · ${tr('haze')} −${t.lossPct.toFixed(0)}%` : ''}</small>
-          </div>
-        </div>
-        <div className="hs">
-          <div className="k">{tr('Tomorrow')}</div>
-          <div className="v">
-            {loading ? '…' : fmt(m)}
-            <small>{m ? ` kWh · ${tr('haze')} −${m.lossPct.toFixed(0)}%` : ''}</small>
-          </div>
-        </div>
+    <div className="big-hero solar-hero teaser">
+      <div className="where">
+        ☀ {tr('Solar forecast')} · 5 kW{solar?.source === 'demo' ? ` · ${tr('Simulated data.')}` : ''}
       </div>
-      <button className="btn" style={{ background: 'var(--sun)', borderColor: 'var(--sun)', color: 'var(--ink)' }} onClick={() => go('forecast')}>
+      <div className="big-row">
+        <span className="big-num">{loading ? '…' : fmt(t)}</span>
+        <span className="big-unit">kWh {tr('today')}</span>
+      </div>
+      <div className="pills">
+        <span>
+          {tr('Tomorrow')}: {loading ? '…' : fmt(m)} kWh
+        </span>
+      </div>
+      <button className="btn teaser-btn" onClick={() => go('forecast')}>
         {tr('Weather & solar')} →
       </button>
     </div>
   );
 }
 
-// One line on the Air quality page: the best time to exercise today, with a link to the Planner.
-function OutdoorChip({ data, today, go }) {
-  if (!data?.hours?.length) return null;
-  const plan = outdoorPlan(data.hours, { offsetSec: data.offsetSec, sensitive: readSensitive() });
-  const best = plan.best.find((b) => !b.none);
-  return (
-    <button className="planner-link section" onClick={() => go('planner')}>
-      <span aria-hidden="true">🏃</span>
-      <span>
-        <b>
-          {best
-            ? `${tr('Best time to exercise')}: ${fmtHour(best.startHour)}–${fmtHour(best.endHour)}${best.date === today ? '' : ` (${tr('tomorrow')})`}`
-            : tr('No good time to exercise outside')}
-        </b>
-        <small>{tr('Planner')}</small>
-      </span>
-      <span className="go" aria-hidden="true">→</span>
-    </button>
-  );
-}

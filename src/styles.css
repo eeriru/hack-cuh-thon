@@ -213,7 +213,7 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.02em; margin: 
 .plan .big { font-family: var(--font-display); font-size: 26px; font-weight: 800; }
 .plan ul { margin: 8px 0 0; padding-left: 18px; font-size: 13.5px; color: var(--ink-2); }
 .savings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
-.savings div { background: var(--paper); border-radius: 12px; padding: 10px 12px; }
+.savings > div { background: var(--paper); border-radius: 12px; padding: 10px 12px; }
 .savings .v { font-family: var(--font-display); font-weight: 800; font-size: 20px; color: var(--good); }
 .savings .k { font-size: 12px; color: var(--ink-3); font-weight: 600; }
 .timeline { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; margin-top: 10px; }
@@ -424,17 +424,6 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-
 /* Outdoor planner */
 .switch { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; color: var(--ink-2); cursor: pointer; max-width: 260px; }
 .switch input { width: 18px; height: 18px; accent-color: var(--ink); }
-.outdoor-best { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 14px 0; }
-.outdoor-best .ob { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
-.outdoor-best .ob.great { background: #eef8e6; border-color: #bfe0a6; }
-.outdoor-best .ob.ok { background: #fdf6dc; border-color: #eedc95; }
-.outdoor-best .ob.none { background: var(--paper-2); }
-.outdoor-best .k { font-size: 12px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
-.outdoor-best .v { font-family: var(--font-display); font-weight: 800; font-size: 22px; }
-.outdoor-strip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(10px, 1fr); gap: 2px; overflow-x: auto; }
-.outdoor-strip .oh { height: 26px; border-radius: 4px; position: relative; }
-.outdoor-strip .oh span { position: absolute; top: 30px; left: 0; font-size: 10px; color: var(--ink-3); white-space: nowrap; }
-.outdoor-strip { padding-bottom: 18px; }
 
 /* Township impact board */
 .impact-list { display: grid; gap: 6px; margin-top: 16px; }
@@ -553,3 +542,78 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-
 .hour-chip .ic { font-size: 22px; margin: 2px 0; }
 .hour-chip .v { font-family: var(--font-display); font-weight: 800; font-size: 18px; }
 .hour-chip .s { font-size: 12px; color: var(--ink-3); }
+.ev-settings { margin: 6px 0 14px; padding: 12px 14px; background: var(--paper); border: 1px solid var(--line); border-radius: 14px; }
+
+/* ---------- Rounded hero + tile look (all pages) ---------- */
+:root { --radius: 24px; --tile-sun: #fdecc8; --tile-sky: #e2edf9; --tile-loss: #fbe2d5; --tile-haze: #ece4d2; --tile-good: #e4f1dc; }
+.card { border-radius: var(--radius); padding: 22px; }
+.tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.tiles.tiles-3 { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 760px) { .tiles.tiles-3 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 420px) { .tiles { gap: 10px; } }
+.tile { position: relative; border-radius: 22px; padding: 18px 20px; background: var(--card); border: 1px solid var(--line); min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tile.wide { grid-column: 1 / -1; }
+.tile.tone-sun { background: var(--tile-sun); border-color: #f1d394; }
+.tile.tone-sky { background: var(--tile-sky); border-color: #c6d9f0; }
+.tile.tone-loss { background: var(--tile-loss); border-color: #f0c3ab; }
+.tile.tone-haze { background: var(--tile-haze); border-color: #dccfb2; }
+.tile.tone-good { background: var(--tile-good); border-color: #c5e0b4; }
+.tile-icon { font-size: 30px; line-height: 1; margin-bottom: 8px; filter: drop-shadow(0 3px 4px rgba(29, 36, 51, 0.18)); }
+.tile-v { font-family: var(--font-display); font-weight: 800; font-size: 30px; line-height: 1.1; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.tile-v.sm { font-size: 21px; }
+.tile-v small { font-family: var(--font-body); font-size: 14px; font-weight: 600; color: var(--ink-3); margin-left: 4px; }
+.tile-k { font-size: 14px; color: var(--ink-2); font-weight: 600; }
+.tile-s { font-size: 12.5px; color: var(--ink-3); }
+.tile-tip { position: absolute; top: 12px; right: 12px; }
+@media (max-width: 420px) { .tile { padding: 14px 15px; } .tile-v { font-size: 25px; } .tile-icon { font-size: 26px; } }
+
+/* Gradient hero cards */
+.big-hero { border-radius: 28px; padding: 24px 26px; position: relative; overflow: hidden; box-shadow: 0 18px 40px -22px rgba(201, 120, 10, 0.7); }
+.big-hero .where { font-size: 14px; font-weight: 600; opacity: 0.85; }
+.big-hero .big-row { display: flex; align-items: center; gap: 16px; margin: 6px 0 4px; flex-wrap: wrap; }
+.big-hero .big-ic { font-size: 58px; line-height: 1; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.2)); }
+.big-hero .big-num { font-family: var(--font-display); font-weight: 800; font-size: clamp(54px, 9vw, 80px); line-height: 0.95; letter-spacing: -0.04em; }
+.big-hero .big-unit { font-family: var(--font-display); font-weight: 700; font-size: clamp(20px, 3vw, 26px); }
+.big-hero .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.big-hero .pills > span { background: rgba(29, 36, 51, 0.14); border-radius: 999px; padding: 6px 13px; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 2px; }
+.solar-hero { background: linear-gradient(135deg, var(--sun) 0%, #e58a12 55%, var(--sun-deep) 100%); color: var(--ink); }
+.wx-big { color: #fff; background: linear-gradient(150deg, #3d6fb0, #6aa0d8); box-shadow: 0 18px 40px -22px rgba(61, 111, 176, 0.8); }
+.wx-big.night { background: linear-gradient(150deg, #1d2433, #39456a); }
+.wx-big.rain { background: linear-gradient(150deg, #4a5a70, #7f93ab); }
+.wx-big.haze { background: linear-gradient(150deg, #8a7a5c, #c2b08a); }
+.wx-big .pills > span { background: rgba(255, 255, 255, 0.18); }
+.big-hero .tip-btn, .big-hero .tip button { color: inherit; }
+.hero-tiles { margin-top: 14px; }
+
+/* Hour tiles */
+.hours-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(84px, 1fr); gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.hour-chip { background: var(--paper); border: 1px solid var(--line); border-radius: 20px; padding: 14px 6px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.hour-chip .ic { font-size: 28px; filter: drop-shadow(0 3px 4px rgba(29, 36, 51, 0.15)); }
+.hour-chip .v { font-size: 20px; }
+.hour-chip .kwh { font-size: 12.5px; font-weight: 700; color: var(--sun-deep); }
+
+/* Air quality hero: the AQI card on its own, tiles below */
+.hero.aq-hero { display: block; border: 0; box-shadow: none; background: none; overflow: visible; border-radius: 0; }
+.aq-hero .hero-aqi { border-radius: 28px; box-shadow: 0 18px 40px -24px rgba(29, 36, 51, 0.5); }
+
+/* Planner tiles */
+.glance { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+.glance-tile { border-radius: 22px; padding: 18px 20px; display: flex !important; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; box-shadow: none !important; }
+.glance-tile .gi { font-size: 30px; margin-bottom: 8px; filter: drop-shadow(0 3px 4px rgba(29, 36, 51, 0.18)); }
+.glance-tile .gv { font-size: 26px; order: 2; }
+.glance-tile .gk { order: 3; text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--ink-2); }
+.glance-tile .gs { order: 4; }
+.glance-tile.t-sun { background: var(--tile-sun); border-color: #f1d394; }
+.glance-tile.t-sky { background: var(--tile-sky); border-color: #c6d9f0; }
+.glance-tile.t-good { background: var(--tile-good); border-color: #c5e0b4; }
+
+/* Softer, rounder inner boxes everywhere */
+.plan, .savings > div, .advice div, .pol, .day, .budget-big, .budget-when, .ev-settings, .day-wx, .cmp { border-radius: 20px !important; }
+.advice div { background: var(--tile-sky); }
+.savings > div { background: var(--tile-good); }
+.chip, .btn { border-radius: 999px; }
+
+/* How it works: each step is a tile */
+.step { background: var(--paper); border: 1px solid var(--line); border-radius: 20px; padding: 16px 18px; }
+.teaser { display: flex; flex-direction: column; justify-content: center; }
+.teaser-btn { align-self: flex-start; margin-top: 16px; background: var(--ink); border-color: var(--ink); color: var(--paper); }

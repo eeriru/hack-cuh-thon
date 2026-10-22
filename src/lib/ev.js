@@ -69,7 +69,7 @@ export function planEv(spareSolar, ev, home) {
   // Smart: all spare solar first (sunniest hours first), then grid by price, later night hours first.
   const solarOrder = hours.filter((h) => spareSolar[h] > 0).sort((a, b) => spareSolar[b] - spareSolar[a]).map((h) => ({ h, kind: 'solar' }));
   const gridOrder = [...hours]
-    .sort((a, b) => rateAt(home.tariff, a) - rateAt(home.tariff, b) || nightRank(a) - nightRank(b))
+    .sort((a, b) => rateAt(home.tariff, a) - rateAt(home.tariff, b) || beforeLeaving(a, ev) - beforeLeaving(b, ev))
     .map((h) => ({ h, kind: 'grid' }));
   const smart = fill([...solarOrder, ...gridOrder], needKwh, spareSolar, ev, home.tariff);
   const co2 = home.gridKgCo2PerKwh ?? 0.7;
@@ -83,5 +83,6 @@ export function planEv(spareSolar, ev, home) {
   };
 }
 
-// Prefer the small hours (midnight–6am) for grid charging: lowest demand on the grid.
-const nightRank = (h) => (h < 7 ? h : h + 24);
+// Among equally cheap hours, charge in one unbroken block that ends just before the car
+// leaves (or 7am if it stays home): the small hours, when the grid is quietest.
+const beforeLeaving = (h, ev) => ((ev.homeDaytime ? 7 : ev.leaveHour) - h + 23) % 24;

@@ -4,24 +4,24 @@ import { DEFAULT_SYSTEM } from '../lib/solar.js';
 import { weatherIcon } from '../lib/weather.js';
 import { fmtHour } from '../lib/battery.js';
 import { planEv, DEFAULT_EV } from '../lib/ev.js';
-import { outdoorPlan } from '../lib/outdoor.js';
 import { buildDays, homeFromSettings, dayHomeFor, planForDay, avgRate, isWeekend } from '../lib/forecastDays.js';
 import { useAsync, Loading, DemoBanner, fmtDate } from './common.jsx';
 import PlanCard from './PlanCard.jsx';
 import EvCard from './EvCard.jsx';
-import OutdoorCard, { useSensitive } from './OutdoorCard.jsx';
 import HomeSettings from './HomeSettings.jsx';
 import SolarBudgetCard from './SolarBudgetCard.jsx';
 import { solarBudget } from '../lib/budget.js';
 import { tr } from '../lib/i18n.js';
 
 // Planner: everything you can act on. Spare solar, battery and chores, EV charging
-// and the best time to exercise, with a one-glance summary at the top.
+// with a one-glance summary at the top.
+// Tile colours, from the app's palette.
+const TINT = { 'plan-budget': 't-sun', 'plan-battery': 't-sky', 'plan-ev': 't-good' };
+
 export default function PlannerPage({ place, engine, settings, setSettings }) {
   const today = todayMY();
   const [selected, setSelected] = useState(today);
   useEffect(() => setSelected(today), [place.lat, place.lon, today]);
-  const [sensitive, setSensitive] = useSensitive();
 
   // The same window as the Weather & solar page opens with, so the data is shared from cache.
   const startDate = addDays(today, -5);
@@ -48,8 +48,6 @@ export default function PlannerPage({ place, engine, settings, setSettings }) {
   const ev = { ...DEFAULT_EV, ...settings.ev };
   const evPlan = ev.enabled && plan ? planEv(plan.hazeAware.exported, ev, dayHome) : null;
   const budget = plan ? solarBudget({ pv: plan.pv, load: plan.load.hazeAware, baseLoad: plan.load.base, splitLoad: plan.load.hazeAware, exported: plan.hazeAware.exported, evSolar: evPlan?.smart.solar, extra: settings.items || [] }) : null;
-  const out = outdoorPlan(data.hours, { offsetSec: data.offsetSec, sensitive });
-  const bestOut = out.best.find((b) => !b.none);
   const jump = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const tiles = [
@@ -63,14 +61,6 @@ export default function PlannerPage({ place, engine, settings, setSettings }) {
     },
     plan && { id: 'plan-battery', icon: '🔋', k: tr('Battery & chores'), v: `RM ${plan.savingRm.toFixed(2)}`, sub: tr('saved') },
     { id: 'plan-ev', icon: '🚗', k: tr('EV charging'), v: evPlan ? `RM ${evPlan.savingRm.toFixed(2)}` : '—', sub: evPlan ? tr('saved') : tr('Add my EV') },
-    {
-      id: 'plan-outdoor',
-      icon: '🏃',
-      k: tr('Exercise'),
-      v: bestOut ? `${fmtHour(bestOut.startHour)}–${fmtHour(bestOut.endHour)}` : tr('No good time'),
-      sub: bestOut ? (bestOut.date === today ? tr('Today') : tr('Tomorrow')) : '',
-      tone: bestOut ? 'good' : 'bad',
-    },
   ].filter(Boolean);
 
   return (
@@ -85,7 +75,7 @@ export default function PlannerPage({ place, engine, settings, setSettings }) {
 
       <section className="glance section" aria-label={tr('At a glance')}>
         {tiles.map((t) => (
-          <button key={t.id} className={`glance-tile ${t.tone ? `tone-border-${t.tone}` : ''}`} onClick={() => jump(t.id)}>
+          <button key={t.id} className={`glance-tile ${TINT[t.id] || ''}`} onClick={() => jump(t.id)}>
             <span className="gi" aria-hidden="true">{t.icon}</span>
             <span className="gk">{t.k}</span>
             <span className="gv">{t.v}</span>
@@ -105,7 +95,6 @@ export default function PlannerPage({ place, engine, settings, setSettings }) {
       {budget && <SolarBudgetCard budget={budget} rate={rate} choreHours={plan.flexHours} items={settings.items || []} setItems={(items) => setSettings({ ...settings, items })} />}
       {plan && <PlanCard plan={plan} home={dayHome} weekend={isWeekend(current.d) && home.tariff.mode === 'tou'} />}
       {plan && <EvCard spareSolar={plan.hazeAware.exported} settings={settings} setSettings={setSettings} home={dayHome} />}
-      <OutdoorCard data={data} todayStr={today} sensitive={sensitive} setSensitive={setSensitive} />
       <HomeSettings settings={settings} setSettings={setSettings} />
     </>
   );

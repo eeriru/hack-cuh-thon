@@ -10,7 +10,7 @@ import HazeScene3D from './HazeScene3D.jsx';
 import AirNow from './AirNow.jsx';
 import { TOWNSHIPS } from '../lib/places.js';
 import { useAsync, Loading, DemoBanner, fmtDate, fmtTime } from './common.jsx';
-import { InShort, Tip, More } from './Friendly.jsx';
+import { InShort, Tip, More, Tile } from './Friendly.jsx';
 import { solarSummary, weatherSummary } from '../lib/summary.js';
 import { buildDays, homeFromSettings, dayHomeFor, planForDay, avgRate as avgRateOf } from '../lib/forecastDays.js';
 import { tr } from '../lib/i18n.js';
@@ -20,20 +20,6 @@ const MAX_AHEAD = 6; // a 7-day forecast (today + 6)
 
 const fmt = (v, d = 0) => (v === null || v === undefined || Number.isNaN(v) ? '–' : v.toFixed(d));
 const has = (v) => v !== null && v !== undefined;
-
-const Stat = ({ k, v, unit, sub, tone, tip }) => (
-  <div className="stat">
-    <div className="k">
-      {tr(k)}
-      {tip && <Tip term={tip} />}
-    </div>
-    <div className="v">
-      {v}
-      {unit && <small>{unit}</small>}
-    </div>
-    {sub && <div className={`small ${tone ? `tone-${tone}` : 'muted'}`}>{sub}</div>}
-  </div>
-);
 
 // One page for the weather and the solar forecast: weather right now, then the
 // selected day's solar output, the day picker, and the details below.
@@ -124,6 +110,12 @@ export default function ForecastPage({ place, engine, settings, go }) {
 
   const L = current.loss;
   const B = current.breakdown;
+  // Solar per hour (kWh, hour ending at t) for the hour tiles.
+  const hourKwh = new Map(days.flatMap((x) => x.loss.rows.map((r) => [r.t, r.kwhHaze * (1 - x.soil.pct / 100)])));
+  const isDayAt = (t) => {
+    const hr = new Date((t + W.offsetSec) * 1000).getUTCHours();
+    return hr >= 7 && hr < 19;
+  };
   const wxLoss = B.steps.filter((s) => ['heat', 'clouds', 'haze'].includes(s.key)).reduce((t, s) => t + Math.max(0, s.kwh), 0);
   const haze = hazeLevel(L.meanAod);
   const dayWord = current.d === today ? tr('today') : current.d === addDays(today, 1) ? tr('tomorrow') : tr('on {date}', { date: fmtDate(current.d) });
@@ -182,31 +174,33 @@ export default function ForecastPage({ place, engine, settings, go }) {
         })]}
       />
 
-      <section className="wx-hero section" aria-label={tr('Weather now')}>
-        <div className={`wx-now ${mood}`}>
-          <span className="label">{tr('Weather now')}</span>
-          <div className="row" style={{ alignItems: 'center' }}>
-            <span className="temp">
-              {fmt(W.c.temp)}
-              <small>°C</small>
-            </span>
-            <span style={{ fontSize: 54 }} aria-hidden="true">{weatherIcon(W.c.weather_code, !night)}</span>
-          </div>
-          <span className="cond">{tr(WEATHER_TEXT[W.c.weather_code]) || '—'}</span>
-          <span className="feels">
-            {tr('Feels like')} {fmt(W.c.feels ?? W.hi)}°C<Tip term="feelsLike" />
-            {W.todayDaily ? ` · ${fmt(W.todayDaily.tmin)}–${fmt(W.todayDaily.tmax)}°C` : ''}
-          </span>
+      <section className={`big-hero wx-big section ${mood}`} aria-label={tr('Weather now')}>
+        <div className="where">📍 {place.name} · {tr('Weather now')}</div>
+        <div className="big-row">
+          <span className="big-ic" aria-hidden="true">{weatherIcon(W.c.weather_code, !night)}</span>
+          <span className="big-num">{fmt(W.c.temp)}°</span>
+          <span className="big-unit">{tr(WEATHER_TEXT[W.c.weather_code]) || '—'}</span>
         </div>
-        <div className="wx-stats">
-          <Stat k="Heat index" tip="heatIndex" v={fmt(W.hi)} unit="°C" sub={tr(W.risk.label)} tone={W.risk.tone} />
-          <Stat k="Humidity" tip="dewPoint" v={fmt(W.c.rh)} unit="%" sub={W.dew !== null ? `${tr('Dew point')} ${fmt(W.dew)}°C` : null} />
-          <Stat k="UV index" tip="uv" v={fmt(W.c.uv, 1)} sub={tr(W.uv.label)} tone={W.uv.tone} />
-          <Stat k="Wind" v={fmt(W.c.wind)} unit="km/h" sub={compass(W.c.windDir)} />
-          <Stat k="Rain next 24 h" tip="rainChance" v={fmt(W.rainNext24, 1)} unit="mm" sub={`💧 ${Math.round(W.maxChance)}%`} />
-          <Stat k="Cloud cover" v={fmt(W.c.cloud)} unit="%" sub={W.todayDaily?.sunset ? `🌇 ${fmtTime(W.todayDaily.sunset, W.offsetSec)}` : null} />
+        <div className="pills">
+          <span>
+            {tr('Feels like')} {fmt(W.c.feels ?? W.hi)}°C<Tip term="feelsLike" />
+          </span>
+          {W.todayDaily && (
+            <span>
+              {fmt(W.todayDaily.tmin)}–{fmt(W.todayDaily.tmax)}°C
+            </span>
+          )}
+          {W.todayDaily?.sunset && <span>🌇 {fmtTime(W.todayDaily.sunset, W.offsetSec)}</span>}
         </div>
       </section>
+      <div className="tiles tiles-3 hero-tiles">
+        <Tile icon="🌡️" tone={['bad', 'worse'].includes(W.risk.tone) ? 'loss' : 'sun'} term="heatIndex" value={fmt(W.hi)} unit="°C" label={tr('Heat index')} sub={tr(W.risk.label)} subTone={W.risk.tone} />
+        <Tile icon="💧" tone="sky" term="dewPoint" value={fmt(W.c.rh)} unit="%" label={tr('Humidity')} sub={W.dew !== null ? `${tr('Dew point')} ${fmt(W.dew)}°C` : null} />
+        <Tile icon="🔆" tone="sun" term="uv" value={fmt(W.c.uv, 1)} label={tr('UV index')} sub={tr(W.uv.label)} subTone={W.uv.tone} />
+        <Tile icon="🌬️" tone="sky" value={fmt(W.c.wind)} unit="km/h" label={tr('Wind')} sub={compass(W.c.windDir)} />
+        <Tile icon="🌧️" tone="sky" term="rainChance" value={fmt(W.rainNext24, 1)} unit="mm" label={tr('Rain next 24 h')} sub={`💧 ${Math.round(W.maxChance)}%`} />
+        <Tile icon="☁️" tone="haze" value={fmt(W.c.cloud)} unit="%" label={tr('Cloud cover')} />
+      </div>
 
       {W.hi !== null && W.hi >= 32 && (
         <div className="card section risk-card">
@@ -217,68 +211,55 @@ export default function ForecastPage({ place, engine, settings, go }) {
 
       <AirNow place={place} go={go} />
 
-      <section className="headline section">
-        <div>
-          <div className="eyebrow">{isPast ? tr('Replay') : tr('Forecast')} · {fmtDate(current.d, { weekday: 'long', day: 'numeric', month: 'long' })}</div>
-          <h2>
-            ☀ <em>{B.final.toFixed(1)} kWh</em> {dayWord}
-          </h2>
-          <div className="hl-chips">
-            <span>
-              ≈ RM {(B.final * avgRate).toFixed(2)}
-              <Tip term="kwh" label="What is a kWh?" />
-            </span>
-            <span>
-              {tr('{pct}% of ideal', { pct: B.performancePct.toFixed(0) })}
-              <Tip term="ideal" label="What is ideal output?" />
-            </span>
-            <span>
-              {tr('Biggest loss')}: <b>{tr(B.biggest.label).toLowerCase()}</b>
-            </span>
-          </div>
+      <section className="big-hero solar-hero section">
+        <div className="where">
+          📍 {place.name} · {isPast ? tr('Replay') : tr('Forecast')} · {fmtDate(current.d, { weekday: 'long', day: 'numeric', month: 'long' })}
         </div>
-        <div className="headline-stats">
-          <div className="hs">
-            <div className="k">
-              {tr('Lost to weather')}
-              <Tip text="Heat, clouds & rain and haze together, compared with an ideal cool, clear day. The breakdown below shows each one." />
-            </div>
-            <div className="v">
-              {wxLoss.toFixed(1)}
-              <small>kWh · {B.ideal > 0 ? ((wxLoss / B.ideal) * 100).toFixed(0) : 0}%</small>
-            </div>
-            <div className="k">≈ RM {(wxLoss * avgRate).toFixed(2)}</div>
-          </div>
-          <div className="hs">
-            <div className="k">{tr('Weather')}</div>
-            <div className="v" style={{ fontSize: 18 }}>
-              {weatherIcon(current.wx.code)} {tr(WEATHER_TEXT[current.wx.code]) || '—'}
-            </div>
-            <div className="k">
-              {current.wx.tmax !== null ? `${Math.round(current.wx.tmax)}°C ${tr('max')}` : ''}
-              {current.wx.rain !== null ? ` · 💧 ${current.wx.rain.toFixed(1)} mm` : ''}
-            </div>
-          </div>
-          <div className="hs">
-            <div className="k">☁ {tr('Cloud cover (daylight)')}</div>
-            <div className="v">
-              {Math.round(L.meanCloud)}
-              <small>%</small>
-            </div>
-          </div>
-          <div className="hs">
-            <div className="k">🌫 {tr('Haze')}</div>
-            <div className="v" style={{ fontSize: 18 }}>{tr(haze.label)}</div>
-            <div className="k">AOD {L.meanAod.toFixed(2)}</div>
-          </div>
+        <div className="big-row">
+          <span className="big-ic" aria-hidden="true">{weatherIcon(current.wx.code)}</span>
+          <span className="big-num">{B.final.toFixed(1)}</span>
+          <span className="big-unit">kWh {dayWord}</span>
+        </div>
+        <div className="pills">
+          <span>
+            ≈ RM {(B.final * avgRate).toFixed(2)}
+            <Tip term="kwh" label="What is a kWh?" />
+          </span>
+          <span>
+            {tr('{pct}% of ideal', { pct: B.performancePct.toFixed(0) })}
+            <Tip term="ideal" label="What is ideal output?" />
+          </span>
+          <span>
+            {tr('Biggest loss')}: {tr(B.biggest.label).toLowerCase()}
+          </span>
         </div>
       </section>
+      <div className="tiles hero-tiles">
+        <Tile
+          icon="📉"
+          tone="loss"
+          tip="Heat, clouds & rain and haze together, compared with an ideal cool, clear day. The breakdown below shows each one."
+          value={wxLoss.toFixed(1)}
+          unit="kWh"
+          label={tr('Lost to weather')}
+          sub={`${B.ideal > 0 ? ((wxLoss / B.ideal) * 100).toFixed(0) : 0}% · RM ${(wxLoss * avgRate).toFixed(2)}`}
+        />
+        <Tile
+          icon={weatherIcon(current.wx.code)}
+          tone="sky"
+          value={current.wx.tmax !== null ? `${Math.round(current.wx.tmax)}°` : '—'}
+          label={tr('Weather')}
+          sub={`${tr(WEATHER_TEXT[current.wx.code]) || '—'}${current.wx.rain !== null ? ` · 💧 ${current.wx.rain.toFixed(1)} mm` : ''}`}
+        />
+        <Tile icon="☁️" tone="sky" value={Math.round(L.meanCloud)} unit="%" label={tr('Cloud cover (daylight)')} />
+        <Tile icon="🌫️" tone="haze" term="aod" value={tr(haze.label)} valueSmall label={tr('Haze')} sub={`AOD ${L.meanAod.toFixed(2)}`} />
+      </div>
 
       <button className="planner-link section" onClick={() => go('planner')}>
         <span aria-hidden="true">🗓</span>
         <span>
           <b>{tr('Planner')}</b>
-          <small>☀ {tr('Spare solar')} · 🔋 {tr('Battery')} · 🚗 EV · 🏃 {tr('Exercise')}</small>
+          <small>☀ {tr('Spare solar')} · 🔋 {tr('Battery')} · 🚗 EV</small>
         </span>
         <span className="go" aria-hidden="true">→</span>
       </button>
@@ -335,8 +316,9 @@ export default function ForecastPage({ place, engine, settings, go }) {
           {W.next.filter((_, i) => i % 3 === 0).map((h) => (
             <div key={h.t} className="hour-chip">
               <div className="k">{fmtTime(h.t, W.offsetSec, { hour: 'numeric' })}</div>
-              <div className="ic" aria-hidden="true">{weatherIcon(h.weather_code)}</div>
+              <div className="ic" aria-hidden="true">{weatherIcon(h.weather_code, isDayAt(h.t))}</div>
               <div className="v">{fmt(h.temp)}°</div>
+              <div className="kwh">{hourKwh.get(h.t + 3600) >= 0.05 ? `${hourKwh.get(h.t + 3600).toFixed(1)} kWh` : '—'}</div>
               <div className="s">💧 {fmt(h.rain, 1)}</div>
             </div>
           ))}
