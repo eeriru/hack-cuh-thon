@@ -75,16 +75,6 @@ export default function MethodPage({ engine }) {
           <Step title="Sunlight to electricity">
             <P t="Predicted sunlight × system size, minus about 0.4% per °C the panels run above 25 °C (cell temperature from air temperature and sunlight) and 14% for inverter, wiring and dirt." />
           </Step>
-          <Step title="Isolating the haze (the key idea)">
-            <P t="The model runs twice for the same hours, with identical clouds and weather:" />
-            <div className="formula">
-              {tr('Run A: real haze forecast')}&nbsp;&nbsp;·&nbsp;&nbsp;
-              {tr('Run B: haze set to a normal level (AOD {aod}, PM2.5 {pm})', { aod: engine?.reference?.aod ?? 0.3, pm: engine?.reference?.pm2_5 ?? 15 })}
-              <br />
-              {tr('Solar lost to haze = Run B − Run A')}
-            </div>
-            <P t="That separates smoke from ordinary cloudiness, so a rainy afternoon is never blamed on haze." />
-          </Step>
           <Step title="Where the solar goes (full loss breakdown)">
             <P t="Each day's output is traced from the ideal down to the forecast, step by step, so the steps always add up:" />
             <div className="formula">
@@ -93,6 +83,16 @@ export default function MethodPage({ engine }) {
               )}
             </div>
             <P t="Dust is an estimate: about 1% after rain, plus ~0.4% per dry day and 0.5% on smoky days, up to 6%. Rain washes the panels clean, so the app counts dry days since the last rain of 2 mm or more." />
+          </Step>
+          <Step title="Measuring the haze on its own">
+            <P t="The model runs twice for the same hours, with identical clouds and weather:" />
+            <div className="formula">
+              {tr('Run A: real haze forecast')}&nbsp;&nbsp;·&nbsp;&nbsp;
+              {tr('Run B: haze set to a normal level (AOD {aod}, PM2.5 {pm})', { aod: engine?.reference?.aod ?? 0.3, pm: engine?.reference?.pm2_5 ?? 15 })}
+              <br />
+              {tr('Solar lost to haze = Run B − Run A')}
+            </div>
+            <P t="That separates smoke from ordinary cloudiness, so a rainy afternoon is never blamed on haze." />
           </Step>
           <Step title="Weather forecast and calculations">
             <P t="7-day forecast (temperature, rain amount and chance, wind, UV, sunshine) from Open-Meteo's weather models. The app calculates the heat index (NOAA), dew point (Magnus formula), heat-stress warnings, UV and rain levels, and the solar output for each forecast day." />

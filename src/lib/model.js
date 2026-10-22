@@ -94,7 +94,7 @@ export const PHYSICS_ENGINE = {
 
 export function makeTreeEngine(model) {
   if (!model || model.type !== 'hgb-trees' || !Array.isArray(model.trees)) {
-    throw new Error('model.json is not a SuriaHaze tree model');
+    throw new Error('model.json is not a SuriaMF tree model');
   }
   return {
     kind: 'trained',

@@ -132,14 +132,14 @@ export function Welcome({ go }) {
   return (
     <section className="welcome section" aria-label={tr('Welcome')}>
       <button className="welcome-x" onClick={close} aria-label={tr('Close welcome message')}>×</button>
-      <h2>{tr('Welcome to SuriaHaze')} 👋</h2>
+      <h2>{tr('Welcome to SuriaMF')} 👋</h2>
       <p>{tr("Your township's air, weather and solar power, explained simply.")}</p>
       <ol>
         <li>
           <b>{tr('Pick your place')}</b> {tr('from the buttons or the search box.')}
         </li>
         <li>
-          <button className="linkish" onClick={() => go('air')}>{tr('Air quality')}</button> · {tr('safe to go out? where is the haze from?')}
+          <button className="linkish" onClick={() => go('air')}>{tr('Air quality')}</button> · {tr('is it safe to go out today?')}
         </li>
         <li>
           <button className="linkish" onClick={() => go('forecast')}>{tr('Weather & solar')}</button> · {tr('heat, rain and your solar power')}

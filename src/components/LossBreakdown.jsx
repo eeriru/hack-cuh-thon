@@ -69,17 +69,7 @@ export default function LossBreakdown({ breakdown, soil }) {
           <small>{pct(final).toFixed(0)}%</small>
         </div>
       </div>
-      <p className="small muted" style={{ margin: '4px 0 0' }}>
-        {tr('Haze vs a haze-free day: −{pct}', { pct: hazeShare(steps, ideal, final) })}
-      </p>
     </div>
   );
 }
 
-function hazeShare(steps, ideal, final) {
-  const haze = steps.find((s) => s.key === 'haze')?.kwh || 0;
-  const dust = steps.find((s) => s.key === 'dust')?.kwh || 0;
-  const withHaze = final + dust; // output before dust
-  const noHaze = withHaze + haze;
-  return noHaze > 0 ? `${((haze / noHaze) * 100).toFixed(0)}%` : '0%';
-}

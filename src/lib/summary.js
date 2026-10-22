@@ -95,7 +95,6 @@ export function solarSummary({ day, days = [], dailyUse, tip, isPast }) {
   });
   const causes = [tr('Biggest loss: {what} ({kwh} kWh)', { what: tr(day.biggest.label).toLowerCase(), kwh: day.biggest.kwh.toFixed(1) })];
   if (day.hazePct >= 3 && day.biggest.key !== 'haze') causes.push(tr('haze −{pct}%', { pct: r0(day.hazePct) }));
-  else if (day.hazePct < 3) causes.push(tr('little haze'));
   items.push({ icon: '🔍', text: causes.join(' · ') });
   if (days.length > 1) {
     const best = days.reduce((a, b) => (b.final > a.final ? b : a));

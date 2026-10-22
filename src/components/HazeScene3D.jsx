@@ -503,7 +503,7 @@ export default function HazeScene3D({
           </div>
         ) : (
           <div className="scene3d-readout">
-            <div className="k">{label || tr('Haze over your roof')}</div>
+            <div className="k">{label || tr('Your roof today')}</div>
             <div className="v">
               {Math.round(share * 100)}%
               <small> {shareForAod ? tr('of haze-free solar output (whole day)') : tr('of normal sunlight reaches the panels')}</small>

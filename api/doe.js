@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   }
   try {
     const r = await fetch(DOE_URL, {
-      headers: { Accept: 'application/json', 'User-Agent': 'SuriaHaze/1.0 (student hackathon prototype)' },
+      headers: { Accept: 'application/json', 'User-Agent': 'SuriaMF/1.0 (student hackathon prototype)' },
       signal: AbortSignal.timeout(15000),
     });
     if (!r.ok) throw new Error(`DOE responded ${r.status}`);

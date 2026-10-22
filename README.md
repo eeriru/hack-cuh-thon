@@ -1,8 +1,8 @@
-# SuriaHaze — solar & weather assistant
+# SuriaMF — solar, weather & energy planner
 
-An IQAir-style air quality app for Malaysian townships, with one extra feature: it
-calculates how much rooftop solar power the haze is costing each home, and plans
-the battery and household chores around it.
+A solar, weather and energy planner for Malaysian townships. It forecasts how much rooftop
+solar each home will make (and what clouds, rain, heat and haze take away), shows the air
+quality and weather, and plans spare solar, the battery, chores, EV charging and exercise.
 
 Built for the Sime Darby Property University Hackathon 2026 (*Township of Tomorrow*, Planet pillar:
 energy efficiency + climate resilience; People pillar: healthier, safer lives).

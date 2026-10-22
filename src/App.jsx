@@ -86,8 +86,8 @@ export default function App() {
               <path d="M12 44h40M16 51h32" stroke="#c9b9a0" strokeWidth="4" strokeLinecap="round" />
             </svg>
             <span className="brand-name">
-              Suria<span>Haze</span>
-              <small className="brand-tag">{tr('Solar & weather assistant')}</small>
+              Suria<span>MF</span>
+              <small className="brand-tag">{tr('Solar, weather & energy')}</small>
             </span>
           </a>
           <nav className="nav" aria-label="Main">
@@ -112,7 +112,7 @@ export default function App() {
         {tab === 'method' && <MethodPage engine={engine} />}
         <footer className="footer">
           {tr(
-            'SuriaHaze — a hackathon prototype for the Township of Tomorrow. Air quality: IQAir (US AQI) and the Department of Environment (DOE) official API via MyEQMS. Weather, haze and sunlight: Open-Meteo (weather models, Copernicus CAMS, JMA/JAXA Himawari). Fire hotspots: NASA FIRMS. Solar figures are model estimates.'
+            'SuriaMF — a hackathon prototype for the Township of Tomorrow. Air quality: IQAir (US AQI) and the Department of Environment (DOE) official API via MyEQMS. Weather, haze and sunlight: Open-Meteo (weather models, Copernicus CAMS, JMA/JAXA Himawari). Fire hotspots: NASA FIRMS. Solar figures are model estimates.'
           )}
         </footer>
       </main>

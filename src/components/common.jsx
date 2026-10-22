@@ -38,7 +38,7 @@ export function DemoBanner({ source }) {
       <span aria-hidden="true">⚠️</span>
       <span>
         <b>{tr('Simulated data.')}</b>{' '}
-        {tr('Live data unreachable: showing a sample haze week. Refresh to try again.')}
+        {tr('Live data unreachable: showing sample data. Refresh to try again.')}
       </span>
     </div>
   );

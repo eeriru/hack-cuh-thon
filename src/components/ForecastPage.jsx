@@ -124,6 +124,7 @@ export default function ForecastPage({ place, engine, settings, go }) {
 
   const L = current.loss;
   const B = current.breakdown;
+  const wxLoss = B.steps.filter((s) => ['heat', 'clouds', 'haze'].includes(s.key)).reduce((t, s) => t + Math.max(0, s.kwh), 0);
   const haze = hazeLevel(L.meanAod);
   const dayWord = current.d === today ? tr('today') : current.d === addDays(today, 1) ? tr('tomorrow') : tr('on {date}', { date: fmtDate(current.d) });
   const isPast = current.d < today;
@@ -239,14 +240,14 @@ export default function ForecastPage({ place, engine, settings, go }) {
         <div className="headline-stats">
           <div className="hs">
             <div className="k">
-              {tr('Lost to haze')}
-              <Tip term="hazeLoss" label="How is haze loss measured?" />
+              {tr('Lost to weather')}
+              <Tip text="Heat, clouds & rain and haze together, compared with an ideal cool, clear day. The breakdown below shows each one." />
             </div>
             <div className="v">
-              {L.lossKwh.toFixed(1)}
-              <small>kWh · {L.lossPct.toFixed(0)}%</small>
+              {wxLoss.toFixed(1)}
+              <small>kWh · {B.ideal > 0 ? ((wxLoss / B.ideal) * 100).toFixed(0) : 0}%</small>
             </div>
-            {plan && <div className="k">{plan.hazeCostRm >= 0.01 ? `+RM ${plan.hazeCostRm.toFixed(2)} ${tr('on your bill')}` : tr('No extra cost')}</div>}
+            <div className="k">≈ RM {(wxLoss * avgRate).toFixed(2)}</div>
           </div>
           <div className="hs">
             <div className="k">{tr('Weather')}</div>
@@ -359,8 +360,8 @@ export default function ForecastPage({ place, engine, settings, go }) {
 
       <div className="card section">
         <h2>
-          🏠 {tr('Haze over your roof')}
-          <Tip text="Drag to look around, or move the slider to see how thicker haze dims the panels." />
+          🏠 {tr('Your roof today')}
+          <Tip text="Drag to look around. Try different weather and haze levels to see how they dim the panels." />
         </h2>
         <HazeScene3D
           aod={L.meanAod}
