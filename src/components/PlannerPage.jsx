@@ -10,6 +10,7 @@ import PlanCard from './PlanCard.jsx';
 import EvCard from './EvCard.jsx';
 import HomeSettings from './HomeSettings.jsx';
 import SolarBudgetCard from './SolarBudgetCard.jsx';
+import TipsCard from './TipsCard.jsx';
 import { solarBudget } from '../lib/budget.js';
 import { tr } from '../lib/i18n.js';
 import { Cloud } from './Dashboard.jsx';
@@ -48,7 +49,7 @@ export default function PlannerPage({ place, engine, settings, setSettings }) {
   // One-glance tiles
   const ev = { ...DEFAULT_EV, ...settings.ev };
   const evPlan = ev.enabled && plan ? planEv(plan.hazeAware.exported, ev, dayHome) : null;
-  const budget = plan ? solarBudget({ pv: plan.pv, load: plan.load.hazeAware, baseLoad: plan.load.base, splitLoad: plan.load.hazeAware, exported: plan.hazeAware.exported, evSolar: evPlan?.smart.solar, extra: settings.items || [] }) : null;
+  const budget = plan ? solarBudget({ pv: plan.pv, load: plan.load.hazeAware, baseLoad: plan.load.base, splitLoad: plan.load.hazeAware, exported: plan.hazeAware.exported, evSolar: evPlan?.smart.solar }) : null;
   const jump = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const tiles = [
@@ -70,6 +71,7 @@ export default function PlannerPage({ place, engine, settings, setSettings }) {
       <h1 className="sr-only">{tr('Planner')}</h1>
       <div className="dash section">
         <div className="dash-main">
+          <p className="sec-lead plan-intro">{tr('The planner turns the solar forecast into a plan for your home. Pick a day from the list, then see how much free solar you will have, when to run chores and the battery, and when to charge your EV. Tap a card to jump to it.')}</p>
           <section className="plan-scenes" aria-label={tr('At a glance')}>
             {tiles.map((t) => (
               <button key={t.id} className={`scene-card plan-scene ${SCENE[t.id]}`} onClick={() => jump(t.id)}>
@@ -86,7 +88,8 @@ export default function PlannerPage({ place, engine, settings, setSettings }) {
             ))}
           </section>
 
-          {budget && <SolarBudgetCard budget={budget} rate={rate} choreHours={plan.flexHours} items={settings.items || []} setItems={(items) => setSettings({ ...settings, items })} />}
+          {budget && <SolarBudgetCard budget={budget} rate={rate} choreHours={plan.flexHours} />}
+          {budget && <TipsCard budget={budget} day={current} nextDay={days[days.indexOf(current) + 1]} home={dayHome} ev={ev} dayLabel={current.d === today ? tr('today') : current.d === addDays(today, 1) ? tr('tomorrow') : fmtDate(current.d, { weekday: 'long' })} />}
           {plan && <PlanCard plan={plan} home={dayHome} weekend={isWeekend(current.d) && home.tariff.mode === 'tou'} />}
           {plan && <EvCard spareSolar={plan.hazeAware.exported} settings={settings} setSettings={setSettings} home={dayHome} />}
         </div>

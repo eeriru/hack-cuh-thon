@@ -522,17 +522,6 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-
 .budget-picks { display: flex; flex-wrap: wrap; gap: 8px; }
 .budget-picks .pick { display: inline-flex; align-items: center; gap: 6px; background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 14px; font-weight: 600; }
 .budget-picks .pick small { color: var(--ink-3); font-weight: 500; }
-.budget-picks .pick.mine { background: #fff6df; border-color: #f1d394; }
-.my-items { margin-top: 14px; }
-.item-list { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 6px; }
-.item-list li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
-.item-list li .chip { margin-left: auto; padding: 2px 10px; }
-.item-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
-.item-form input, .item-form select { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
-.item-form input:not([type]) { flex: 1 1 180px; min-width: 0; }
-.item-form input[type='number'] { width: 84px; }
-.item-form label { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; }
-.item-form .btn:disabled { opacity: 0.5; cursor: default; }
 
 /* No charts: plain rows and chips */
 .waterfall .wf-row { grid-template-columns: 1fr auto; }
@@ -865,3 +854,18 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-
 .side-panel .more { box-shadow: none; background: var(--paper); border-radius: 20px; }
 .side-panel .more .card { background: transparent; box-shadow: none; padding: 8px 0 0; }
 .side-panel .settings { grid-template-columns: 1fr 1fr; }
+
+/* Planner: what each section does, and the ideas card */
+.sec-lead { color: var(--ink-2); font-size: 14.5px; line-height: 1.5; margin: 2px 0 16px; max-width: 70ch; }
+.plan-intro { margin: 0 0 14px; }
+.tips-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.tips-group { border-radius: 22px; padding: 16px 18px; }
+.tips-group h3 { margin: 0 0 10px; font-size: 15px; }
+.tip-solar { background: #fff4dc; }
+.tip-save { background: #e8f1fb; }
+.tips-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.tips-list li { display: flex; gap: 12px; align-items: flex-start; }
+.tip-ic { flex: none; width: 36px; height: 36px; border-radius: 12px; background: #fff; display: grid; place-items: center; font-size: 18px; }
+.tips-list b { display: block; font-size: 14.5px; }
+.tips-list p { margin: 2px 0 0; font-size: 13.5px; color: var(--ink-2); line-height: 1.45; }
+@media (max-width: 760px) { .tips-grid { grid-template-columns: minmax(0, 1fr); } }

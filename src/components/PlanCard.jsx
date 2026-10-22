@@ -24,6 +24,7 @@ export default function PlanCard({ plan, home, weekend }) {
         </h2>
         {weekend && <span className="badge soft">{tr('Weekend: off-peak all day')}</span>}
       </div>
+      <p className="sec-lead">{tr('Compares a normal day with a smart plan that times your chores and battery to cost less. Follow the steps under Smart day to get the saving.')}</p>
       <div className="plan-cols">
         <div className="plan">
           <h3>{tr('Normal day')}</h3>

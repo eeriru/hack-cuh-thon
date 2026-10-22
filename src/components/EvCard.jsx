@@ -54,6 +54,7 @@ export default function EvCard({ spareSolar, settings, setSettings, home }) {
           </h2>
           <button className="btn" onClick={() => set({ enabled: true })}>{tr('Add my EV')}</button>
         </div>
+      <p className="sec-lead">{tr('Plans when to charge your car: free spare solar first, then the cheapest grid hours while it is plugged in at home. Fill in your car and when you are home.')}</p>
       </div>
     );
   }
@@ -84,6 +85,7 @@ export default function EvCard({ spareSolar, settings, setSettings, home }) {
         </h2>
         <button className="chip" onClick={() => set({ enabled: false })}>{tr('Hide')}</button>
       </div>
+      <p className="sec-lead">{tr('Plans when to charge your car: free spare solar first, then the cheapest grid hours while it is plugged in at home. Fill in your car and when you are home.')}</p>
 
       <div className="settings ev-settings">
         <NumField label="Driving per day" unit="km" value={ev.kmPerDay} min={0} max={500} step={5} onChange={(v) => set({ kmPerDay: v })} />
@@ -110,6 +112,24 @@ export default function EvCard({ spareSolar, settings, setSettings, home }) {
       ) : (
         <>
           <div className="plan-cols">
+            <div className="plan">
+              <h3>❌ {ev.homeDaytime ? tr('Plugging in at {hour}', { hour: fmtHour(from) }) : tr('Plugging in when you get home')}</h3>
+              <div className="big">
+                RM {s.costRm.toFixed(2)} <small>{tr('a day')}</small>
+              </div>
+              <ul className="icon-list">
+                <li>
+                  <span aria-hidden="true">🔌</span>
+                  {tr('Charges {hours}', { hours: rangesFrom(stdHours, from) || '—' })}
+                </li>
+                {stdPeak && (
+                  <li className="tone-bad">
+                    <span aria-hidden="true">💸</span>
+                    {tr('Expensive peak rate ({from}–{to})', { from: fmtHour(home.tariff.peakStart), to: fmtHour(home.tariff.peakEnd) })}
+                  </li>
+                )}
+              </ul>
+            </div>
             <div className="plan smart">
               <h3>✅ {tr('Best way to charge')}</h3>
               <div className="big">
@@ -138,24 +158,6 @@ export default function EvCard({ spareSolar, settings, setSettings, home }) {
                   <li className="muted">
                     <span aria-hidden="true">☁</span>
                     {tr('No free solar for the car: {why}', { why: noSolarWhy })}
-                  </li>
-                )}
-              </ul>
-            </div>
-            <div className="plan">
-              <h3>❌ {ev.homeDaytime ? tr('Plugging in at {hour}', { hour: fmtHour(from) }) : tr('Plugging in when you get home')}</h3>
-              <div className="big">
-                RM {s.costRm.toFixed(2)} <small>{tr('a day')}</small>
-              </div>
-              <ul className="icon-list">
-                <li>
-                  <span aria-hidden="true">🔌</span>
-                  {tr('Charges {hours}', { hours: rangesFrom(stdHours, from) || '—' })}
-                </li>
-                {stdPeak && (
-                  <li className="tone-bad">
-                    <span aria-hidden="true">💸</span>
-                    {tr('Expensive peak rate ({from}–{to})', { from: fmtHour(home.tariff.peakStart), to: fmtHour(home.tariff.peakEnd) })}
                   </li>
                 )}
               </ul>
