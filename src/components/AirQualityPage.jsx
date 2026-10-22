@@ -233,6 +233,7 @@ export default function AirQualityPage({ place, engine, go }) {
             signTitle={TOWNSHIPS.some((t) => t.name === place.name) ? place.name : null}
             interactive={false}
             height={300}
+            weatherCode={solarData.data?.current?.weather_code ?? null}
           />
         </div>
       )}

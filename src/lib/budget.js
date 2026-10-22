@@ -21,11 +21,25 @@ const sum = (a) => a.reduce((s, x) => s + x, 0);
  * exported: solar per hour left after the house and battery (the planner's output).
  * evSolar: solar per hour the EV planner already uses (optional).
  */
-export function solarBudget({ pv, load, exported, evSolar = null, splitLoad = load }) {
+/** A user's own item: power in watts × hours of use → kWh. */
+export const itemKwh = (it) => (Math.max(0, it.watts || 0) * Math.max(0, it.hours || 0)) / 1000;
+
+// The battery plan's "chores" are these appliances, so they are not suggested twice.
+const CHORE_KEYS = ['wash', 'dryer', 'heater'];
+
+/**
+ * One shared budget for the day. Home use, the planned chores and the EV's solar charging come
+ * off first; what is left is shared by your own items, then typical appliances, then aircon.
+ * extra: the user's own items [{ id, icon, name, watts, hours }].
+ * baseLoad: home use without the chores, to show how much solar the chores already take.
+ */
+export function solarBudget({ pv, load, exported, evSolar = null, splitLoad = load, extra = [], baseLoad = null }) {
   const spare = exported.map((x, h) => Math.max(0, x - (evSolar?.[h] || 0)));
   // Solar beyond the home's own use, hour by hour (the EV's share taken out).
   const surplus = pv.map((p, h) => Math.max(0, p - load[h] - (evSolar?.[h] || 0)));
   const surplusKwh = sum(surplus);
+  const choresKwh = baseLoad ? Math.max(0, sum(pv.map((p, h) => Math.max(0, p - baseLoad[h] - (evSolar?.[h] || 0)))) - surplusKwh) : 0;
+  const choresPlanned = choresKwh >= 0.05;
   const madeKwh = sum(pv);
   // splitLoad: the planned day's load (with chores), for the home/battery/grid split.
   const homeKwh = sum(pv.map((p, h) => Math.min(p, splitLoad[h])));
@@ -46,10 +60,20 @@ export function solarBudget({ pv, load, exported, evSolar = null, splitLoad = lo
   }
   const peakHour = surplus.indexOf(Math.max(...surplus));
 
-  // What fits: each appliance once (smallest first), then aircon hours with what is left.
+  // What fits: the user's own items first (in the order added), then each typical appliance
+  // once (smallest first), then aircon hours with what is left.
   let left = surplusKwh;
   const picks = [];
-  for (const a of [...APPLIANCES].sort((x, y) => x.kwh - y.kwh)) {
+  const tooBig = [];
+  for (const it of extra) {
+    const kwh = itemKwh(it);
+    if (kwh <= 0) continue;
+    if (kwh <= left) {
+      picks.push({ key: `my-${it.id}`, icon: it.icon || '🔌', label: it.name, kwh, count: 1, custom: true });
+      left -= kwh;
+    } else tooBig.push({ ...it, kwh });
+  }
+  for (const a of [...APPLIANCES].filter((x) => !(choresPlanned && CHORE_KEYS.includes(x.key))).sort((x, y) => x.kwh - y.kwh)) {
     if (a.kwh <= left) {
       picks.push({ ...a, count: 1 });
       left -= a.kwh;
@@ -69,10 +93,12 @@ export function solarBudget({ pv, load, exported, evSolar = null, splitLoad = lo
     homeKwh,
     batteryKwh,
     evKwh,
+    choresKwh,
     spareKwh,
     window: best ? { start: best.start, end: best.end + 1, kwh: best.kwh } : null,
     peakHour: surplusKwh > 0 ? peakHour : null,
-    picks: surplusKwh >= 0.5 ? picks : [],
+    picks: surplusKwh >= 0.5 ? picks : picks.filter((p) => p.custom),
+    tooBig,
     leftKwh: Math.max(0, left),
   };
 }

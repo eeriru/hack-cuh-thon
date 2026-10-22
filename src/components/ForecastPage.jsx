@@ -365,6 +365,7 @@ export default function ForecastPage({ place, engine, settings, go }) {
         <HazeScene3D
           aod={L.meanAod}
           shareForAod={shareForAod}
+          weatherCode={current.wx.code}
           label={`${fmtDate(current.d)} · ${place.name}`}
           signTitle={TOWNSHIPS.some((t) => t.name === place.name) ? place.name : null}
         />

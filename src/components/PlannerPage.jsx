@@ -47,7 +47,7 @@ export default function PlannerPage({ place, engine, settings, setSettings }) {
   // One-glance tiles
   const ev = { ...DEFAULT_EV, ...settings.ev };
   const evPlan = ev.enabled && plan ? planEv(plan.hazeAware.exported, ev, dayHome) : null;
-  const budget = plan ? solarBudget({ pv: plan.pv, load: plan.load.base, splitLoad: plan.load.hazeAware, exported: plan.hazeAware.exported, evSolar: evPlan?.smart.solar }) : null;
+  const budget = plan ? solarBudget({ pv: plan.pv, load: plan.load.hazeAware, baseLoad: plan.load.base, splitLoad: plan.load.hazeAware, exported: plan.hazeAware.exported, evSolar: evPlan?.smart.solar, extra: settings.items || [] }) : null;
   const out = outdoorPlan(data.hours, { offsetSec: data.offsetSec, sensitive });
   const bestOut = out.best.find((b) => !b.none);
   const jump = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -102,7 +102,7 @@ export default function PlannerPage({ place, engine, settings, setSettings }) {
         ))}
       </div>
 
-      {budget && <SolarBudgetCard budget={budget} rate={rate} />}
+      {budget && <SolarBudgetCard budget={budget} rate={rate} choreHours={plan.flexHours} items={settings.items || []} setItems={(items) => setSettings({ ...settings, items })} />}
       {plan && <PlanCard plan={plan} home={dayHome} weekend={isWeekend(current.d) && home.tariff.mode === 'tou'} />}
       {plan && <EvCard spareSolar={plan.hazeAware.exported} settings={settings} setSettings={setSettings} home={dayHome} />}
       <OutdoorCard data={data} todayStr={today} sensitive={sensitive} setSensitive={setSensitive} />

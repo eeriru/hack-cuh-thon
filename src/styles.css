@@ -300,6 +300,9 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-
 .scene3d-readout .v { font-family: var(--font-display); font-weight: 800; font-size: 26px; line-height: 1.15; }
 .scene3d-readout .v small { font-family: var(--font-body); font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
 .scene3d-controls { margin-top: 12px; }
+.scene3d-wx { position: absolute; top: 12px; right: 12px; background: rgba(255, 253, 248, 0.9); color: var(--ink); font-size: 12.5px; font-weight: 700; padding: 5px 10px; border-radius: 999px; pointer-events: none; }
+.scene3d-wxpick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.scene3d-wxpick .chip small { font-weight: 500; }
 .scene3d-controls label { display: block; font-size: 12px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
 .scene3d-slider { display: flex; align-items: center; gap: 10px; }
 .scene3d-slider input { flex: 1; accent-color: var(--sun-deep); }
@@ -519,6 +522,8 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-
 .budget-big.none .v { color: var(--ink-3); }
 .budget-big .k, .budget-when .k { font-weight: 700; font-size: 13.5px; margin-top: 4px; }
 .budget-when .v { font-family: var(--font-display); font-weight: 800; font-size: 26px; margin-top: 4px; }
+.budget-counted { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 8px; }
+.budget-counted span:not(.muted) { font-weight: 600; }
 .budget-split .bar { display: flex; height: 14px; border-radius: 99px; overflow: hidden; background: var(--paper-2); }
 .budget-split .bar i { display: block; height: 100%; }
 .budget-hours { display: grid; grid-template-columns: repeat(24, 1fr); gap: 3px; height: 90px; margin-top: 14px; align-items: end; }
@@ -528,6 +533,17 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-
 .budget-picks { display: flex; flex-wrap: wrap; gap: 8px; }
 .budget-picks .pick { display: inline-flex; align-items: center; gap: 6px; background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 14px; font-weight: 600; }
 .budget-picks .pick small { color: var(--ink-3); font-weight: 500; }
+.budget-picks .pick.mine { background: #fff6df; border-color: #f1d394; }
+.my-items { margin-top: 14px; }
+.item-list { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 6px; }
+.item-list li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+.item-list li .chip { margin-left: auto; padding: 2px 10px; }
+.item-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.item-form input, .item-form select { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.item-form input:not([type]) { flex: 1 1 180px; min-width: 0; }
+.item-form input[type='number'] { width: 84px; }
+.item-form label { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; }
+.item-form .btn:disabled { opacity: 0.5; cursor: default; }
 
 /* No charts: plain rows and chips */
 .waterfall .wf-row { grid-template-columns: 1fr auto; }

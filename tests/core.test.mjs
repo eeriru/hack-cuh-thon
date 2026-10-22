@@ -507,4 +507,31 @@ test('solar budget: spare solar, best hours and what it can run', () => {
   assert.equal(withEv.picks.length, 0);
 });
 
+test('solar budget: your own items are planned first, too-big ones are listed', () => {
+  const pv = Array.from({ length: 24 }, (_, h) => (h >= 8 && h <= 17 ? 1.5 : 0));
+  const load = new Array(24).fill(1); // 5 kWh spare
+  const exported = new Array(24).fill(0);
+  const b = solarBudget({ pv, load, exported, extra: [
+    { id: 1, name: 'Oven', watts: 2000, hours: 1 },
+    { id: 2, name: 'Pool pump', watts: 1000, hours: 8 },
+  ] });
+  assert.equal(b.picks[0].label, 'Oven');
+  assert.equal(b.picks[0].kwh, 2);
+  assert.equal(b.tooBig.length, 1);
+  assert.equal(b.tooBig[0].name, 'Pool pump');
+  assert.ok(b.picks.reduce((s, p) => s + p.kwh, 0) <= 5 + 1e-9);
+});
+
+test('solar budget: chores and EV already planned in the sun are not counted twice', () => {
+  const pv = Array.from({ length: 24 }, (_, h) => (h >= 8 && h <= 17 ? 3 : 0));
+  const base = new Array(24).fill(1);
+  const load = base.map((b, h) => (h === 12 || h === 13 ? b + 1.5 : b)); // 3 kWh of chores at noon
+  const evSolar = pv.map((p, h) => (h === 10 ? 2 : 0));
+  const b = solarBudget({ pv, load, baseLoad: base, exported: new Array(24).fill(0), evSolar });
+  assert.equal(b.choresKwh, 3);
+  assert.equal(b.evKwh, 2);
+  assert.equal(b.surplusKwh, 20 - 3 - 2);
+  assert.ok(!b.picks.some((p) => ['wash', 'dryer', 'heater'].includes(p.key)));
+});
+
 console.log(`\n${passed} tests passed`);

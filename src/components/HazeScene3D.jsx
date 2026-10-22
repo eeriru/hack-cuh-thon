@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { aerosolTransmission } from '../lib/model.js';
 import { hazeLevel } from '../lib/aqi.js';
 import { tr } from '../lib/i18n.js';
+import { weatherKind, SCENE_WEATHER } from '../lib/weather.js';
 
 // A small dependency-free 3D scene (canvas + perspective projection):
 // a row of terrace homes with rooftop solar panels, the sun, sunlight rays and haze
@@ -104,6 +105,29 @@ function makeParticles(count, seed = 7) {
   return Array.from({ length: count }, () => ({ x: mix(-11, 11, rnd()), y: mix(0.3, 9, rnd() ** 1.3), z: mix(-8, 8, rnd()), r: mix(0.6, 1.8, rnd()), p: rnd() * 6.28 }));
 }
 
+// Weather looks: cloud cover, how dark the sky gets, rain/snow amount, fog, and how much
+// of the sunshine still shows (visual only; the solar figure comes from the model).
+const WX_LOOK = {
+  clear: { icon: '☀️', label: 'Clear sky', cloud: 0.15, dark: 0, rain: 0, snow: 0, fog: 0, sun: 1 },
+  cloudy: { icon: '☁️', label: 'Cloudy', cloud: 0.75, dark: 0.15, rain: 0, snow: 0, fog: 0, sun: 0.55 },
+  drizzle: { icon: '🌦️', label: 'Drizzle', cloud: 0.85, dark: 0.25, rain: 0.3, snow: 0, fog: 0, sun: 0.35 },
+  rain: { icon: '🌧️', label: 'Rain', cloud: 1, dark: 0.42, rain: 0.75, snow: 0, fog: 0, sun: 0.15 },
+  storm: { icon: '⛈️', label: 'Thunderstorm', cloud: 1, dark: 0.65, rain: 1, snow: 0, fog: 0, sun: 0.05, lightning: true },
+  fog: { icon: '🌫️', label: 'Fog', cloud: 0.2, dark: 0.05, rain: 0, snow: 0, fog: 0.75, sun: 0.35 },
+  snow: { icon: '❄️', label: 'Snow', cloud: 0.9, dark: 0.12, rain: 0, snow: 1, fog: 0.15, sun: 0.3 },
+};
+
+function makeClouds(seed = 3) {
+  let s = seed;
+  const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  return Array.from({ length: 8 }, () => {
+    const cx = mix(-11, 11, rnd());
+    const cy = mix(7.5, 9.5, rnd());
+    const cz = mix(-7, 4, rnd());
+    return Array.from({ length: 6 }, (_, k) => ({ x: cx + (k - 2.5) * 0.9 + rnd() * 0.4, y: cy + Math.sin(k) * 0.35 + rnd() * 0.3, z: cz + rnd() * 0.8, r: mix(1.1, 1.8, rnd()) }));
+  });
+}
+
 // Air-quality mode: when an IQAir US AQI and/or DOE API is given instead of an AOD, the
 // haze you see is driven by that reading (visual only; no sunlight figure is claimed).
 const hazeFromIndex = (idx) => Math.min(1, Math.max(0, (idx - 30) / 220));
@@ -152,6 +176,8 @@ export default function HazeScene3D({
   // Optional: (aod) => share of haze-free solar output, from the page's full solar model.
   // When given, the scene shows exactly the same figure as the page headline.
   shareForAod = null,
+  // Optional: today's weather code (Open-Meteo / WMO); the scene shows that weather.
+  weatherCode = null,
 }) {
   const airMode = aqi !== null || doeApi !== null;
   const aodToday = airMode ? 0.2 + 1.8 * hazeFromIndex(aqi ?? doeApi) : aodIn;
@@ -165,6 +191,12 @@ export default function HazeScene3D({
   const particles = useMemo(() => makeParticles(900), []);
 
   useEffect(() => setAod(aodToday), [aodToday]);
+  const wxToday = weatherKind(weatherCode);
+  const [wx, setWx] = useState(wxToday);
+  useEffect(() => setWx(wxToday), [wxToday]);
+  const look = WX_LOOK[wx];
+  const clouds = useMemo(() => makeClouds(), []);
+  const drops = useMemo(() => makeParticles(700, 13), []);
 
   const share = shareForAod ? Math.max(0, Math.min(1, shareForAod(aod))) : sunShare(aod);
   const haze = Math.min(1, Math.max(0, (aod - 0.2) / 1.8));
@@ -206,26 +238,46 @@ export default function HazeScene3D({
         return { x: cx + (f * x1) / depth, y: cy - (f * y2) / depth, d: depth };
       };
 
-      // sky
+      // sky: haze turns it brown, cloud and rain turn it grey, snow turns it pale
+      const lit = share * look.sun; // how bright the sunshine looks
+      const grey = look.snow ? [200, 207, 218] : mixRgb([150, 158, 170], [62, 68, 84], Math.min(1, look.dark / 0.65));
+      const greyAmt = Math.min(1, look.dark * 1.5 + look.snow * 0.8);
       const g = ctx.createLinearGradient(0, 0, 0, h);
-      g.addColorStop(0, rgb(mixRgb([120, 182, 232], [181, 166, 138], haze)));
-      g.addColorStop(1, rgb(mixRgb([222, 240, 251], [232, 220, 196], haze)));
+      g.addColorStop(0, rgb(mixRgb(mixRgb([120, 182, 232], [181, 166, 138], haze), grey, greyAmt)));
+      g.addColorStop(1, rgb(mixRgb(mixRgb([222, 240, 251], [232, 220, 196], haze), mixRgb(grey, [235, 238, 242], 0.35), greyAmt)));
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
 
       // sun with glow, dimmed by haze
       const sp2 = proj(SUN);
       const glow = ctx.createRadialGradient(sp2.x, sp2.y, 2, sp2.x, sp2.y, 90);
-      glow.addColorStop(0, `rgba(255,236,170,${0.75 * share})`);
+      glow.addColorStop(0, `rgba(255,236,170,${0.75 * lit})`);
       glow.addColorStop(1, 'rgba(255,236,170,0)');
       ctx.fillStyle = glow;
       ctx.beginPath();
       ctx.arc(sp2.x, sp2.y, 90, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = rgb(mixRgb([255, 196, 60], [230, 170, 110], haze), mix(1, 0.7, haze));
+      ctx.fillStyle = rgb(mixRgb([255, 196, 60], [230, 170, 110], haze), mix(1, 0.7, haze) * mix(0.25, 1, look.sun));
       ctx.beginPath();
       ctx.arc(sp2.x, sp2.y, 17, 0, Math.PI * 2);
       ctx.fill();
+
+      // clouds drifting across the sky
+      const nClouds = Math.round(look.cloud * clouds.length);
+      const cloudCol = mixRgb([250, 251, 253], [92, 98, 112], Math.min(1, look.dark * 1.3));
+      for (let i = 0; i < nClouds; i++) {
+        const drift = reduce ? 0 : t * 0.25;
+        for (const puff of clouds[i]) {
+          let x = puff.x + drift;
+          x = ((((x + 13) % 26) + 26) % 26) - 13;
+          const q = proj(v(x, puff.y, puff.z));
+          if (q.d < 1) continue;
+          ctx.fillStyle = rgb(cloudCol, 0.55 + 0.35 * look.cloud);
+          ctx.beginPath();
+          ctx.arc(q.x, q.y, (puff.r * f) / q.d / 2.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
 
       // faces, painter's algorithm
       const drawn = faces
@@ -238,13 +290,15 @@ export default function HazeScene3D({
       const panelCenters = [];
       for (const { fc, pr, n } of drawn) {
         const lambert = Math.max(0, dot(n, SUN_DIR));
-        const light = 0.55 + 0.45 * lambert * mix(1, share, 0.8);
+        const light = (0.55 + 0.45 * lambert * mix(1, lit, 0.8)) * (1 - 0.3 * look.dark);
         let col = fc.color.map((c) => Math.min(255, c * light));
         if (fc.kind === 'panel') {
-          col = mixRgb([22, 34, 64], [96, 168, 238], share * share);
+          col = mixRgb([22, 34, 64], [96, 168, 238], lit * lit);
           const c = fc.pts.reduce((s, q) => v(s.x + q.x / 4, s.y + q.y / 4, s.z + q.z / 4), v(0, 0, 0));
           panelCenters.push(c);
         }
+        // snow settles on the ground, roofs, tree tops and partly on the panels
+        if (look.snow && n.y > 0.3 && fc.kind !== 'signface') col = mixRgb(col, [244, 247, 252], fc.kind === 'panel' ? 0.45 : 0.82);
         col = mixRgb(col, [200, 186, 160], haze * 0.25); // haze washes colours out
         ctx.fillStyle = rgb(col);
         ctx.beginPath();
@@ -253,7 +307,7 @@ export default function HazeScene3D({
         ctx.fill();
         if (fc.kind === 'signface') drawSignText(ctx, pr, dpr, signRef.current, haze);
         if (fc.kind === 'panel') {
-          ctx.strokeStyle = `rgba(255,255,255,${0.25 + 0.5 * share})`;
+          ctx.strokeStyle = `rgba(255,255,255,${0.25 + 0.5 * lit})`;
           ctx.lineWidth = 1;
           ctx.stroke();
         } else if (fc.kind !== 'ground') {
@@ -269,10 +323,11 @@ export default function HazeScene3D({
         if (i % 2) return;
         const a = proj(SUN);
         const b = proj(c);
-        const reach = 0.25 + 0.75 * share; // haze stops rays part-way
+        if (look.sun < 0.2) return; // no direct sunshine in heavy rain or storms
+        const reach = 0.25 + 0.75 * lit; // haze and cloud stop rays part-way
         const ex = mix(a.x, b.x, reach);
         const ey = mix(a.y, b.y, reach);
-        ctx.strokeStyle = `rgba(255,214,90,${0.25 + 0.55 * share})`;
+        ctx.strokeStyle = `rgba(255,214,90,${0.25 + 0.55 * lit})`;
         ctx.lineWidth = 2.2;
         ctx.setLineDash([7, 7]);
         ctx.lineDashOffset = reduce ? 0 : -t * 40;
@@ -283,7 +338,7 @@ export default function HazeScene3D({
         if (reach < 0.98) {
           // scattered light: a little puff where the ray dies
           ctx.setLineDash([]);
-          ctx.fillStyle = `rgba(255,214,90,${0.25 * (1 - share)})`;
+          ctx.fillStyle = `rgba(255,214,90,${0.25 * (1 - lit)})`;
           ctx.beginPath();
           ctx.arc(ex, ey, 7, 0, Math.PI * 2);
           ctx.fill();
@@ -313,6 +368,66 @@ export default function HazeScene3D({
       ctx.fillStyle = `rgba(205,188,155,${0.28 * haze})`;
       ctx.fillRect(0, 0, w, h);
 
+      // rain: slanted streaks falling fast
+      if (look.rain) {
+        const nDrops = Math.round(look.rain * drops.length);
+        ctx.strokeStyle = `rgba(190,208,232,${0.35 + 0.25 * look.rain})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let i = 0; i < nDrops; i++) {
+          const p = drops[i];
+          const y = 10 - ((((10 - p.y) + (reduce ? 0 : t * 9) + p.p) % 10) + 10) % 10;
+          const a = proj(v(p.x, y, p.z));
+          const b = proj(v(p.x - 0.12, y - 0.55, p.z));
+          if (a.d < 1) continue;
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+        }
+        ctx.stroke();
+      }
+      // snow: soft flakes drifting down
+      if (look.snow) {
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        for (let i = 0; i < drops.length; i++) {
+          const p = drops[i];
+          const y = 10 - ((((10 - p.y) + (reduce ? 0 : t * 0.9) + p.p) % 10) + 10) % 10;
+          const q = proj(v(p.x + 0.3 * Math.sin(t * 0.8 + p.p), y, p.z));
+          if (q.d < 1) continue;
+          ctx.beginPath();
+          ctx.arc(q.x, q.y, Math.max(1, (p.r * f) / q.d / 14), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      // fog: a white veil, thicker near the ground
+      if (look.fog) {
+        const fg = ctx.createLinearGradient(0, 0, 0, h);
+        fg.addColorStop(0, `rgba(236,238,240,${0.35 * look.fog})`);
+        fg.addColorStop(1, `rgba(236,238,240,${0.8 * look.fog})`);
+        ctx.fillStyle = fg;
+        ctx.fillRect(0, 0, w, h);
+      }
+      // lightning: a bolt and a flash every few seconds
+      if (look.lightning) {
+        const cycle = reduce ? 0.05 : t % 4.5;
+        if (cycle < 0.12 || (cycle > 0.22 && cycle < 0.3)) {
+          let s = Math.floor(t / 4.5) * 7919 + 11;
+          const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+          const bx = mix(2, 9, rnd());
+          let p = proj(v(bx, 9, -4));
+          ctx.strokeStyle = 'rgba(255,255,235,0.95)';
+          ctx.lineWidth = 2.4;
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          for (let y = 8; y >= 0; y -= 1) {
+            p = proj(v(bx + (rnd() - 0.5) * 1.2, y, -4));
+            ctx.lineTo(p.x, p.y);
+          }
+          ctx.stroke();
+          ctx.fillStyle = 'rgba(255,255,255,0.28)';
+          ctx.fillRect(0, 0, w, h);
+        }
+      }
+
       if (running && !reduce) raf = requestAnimationFrame(draw);
     };
     raf = requestAnimationFrame(draw);
@@ -326,7 +441,7 @@ export default function HazeScene3D({
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', redraw);
     };
-  }, [faces, particles, share, haze]);
+  }, [faces, particles, share, haze, look, clouds, drops]);
 
   const onDown = (e) => {
     const vw = view.current;
@@ -355,9 +470,10 @@ export default function HazeScene3D({
           className="scene3d-canvas"
           role="img"
           aria-label={
-            airMode
+            `${tr(look.label)}. ` +
+            (airMode
               ? tr('3D view of terrace homes and a Sime Darby Property signboard, with haze matching the current air quality reading')
-              : tr('3D view of terrace homes with solar panels in {level}; panels receive about {pct}% of normal sunlight', { level: tr(level.label).toLowerCase(), pct: Math.round(share * 100) })
+              : tr('3D view of terrace homes with solar panels in {level}; panels receive about {pct}% of normal sunlight', { level: tr(level.label).toLowerCase(), pct: Math.round(share * 100) }))
           }
           onPointerDown={onDown}
           onPointerMove={onMove}
@@ -365,6 +481,9 @@ export default function HazeScene3D({
           onPointerLeave={onUp}
         />
         <div className="scene3d-badge">3D · {tr('drag to rotate')}</div>
+        <div className="scene3d-wx">
+          {look.icon} {tr(look.label)}
+        </div>
         {airMode ? (
           <div className="scene3d-readout">
             <div className="k">{label || tr('Air right now')}</div>
@@ -410,9 +529,25 @@ export default function HazeScene3D({
               onChange={(e) => setAod(parseFloat(e.target.value))}
             />
             <span className="small muted">{tr('Severe')}</span>
-            <button className="chip" onClick={() => setAod(aodToday)} disabled={Math.abs(aod - aodToday) < 0.01}>
+            <button
+              className="chip"
+              onClick={() => {
+                setAod(aodToday);
+                setWx(wxToday);
+              }}
+              disabled={Math.abs(aod - aodToday) < 0.01 && wx === wxToday}
+            >
               {tr('Reset to today')}
             </button>
+          </div>
+          <div className="scene3d-wxpick" role="group" aria-label={tr('Try the weather')}>
+            <span className="small muted">{tr('Try the weather')}</span>
+            {SCENE_WEATHER.map((k) => (
+              <button key={k} className={`chip ${wx === k ? 'active' : ''}`} aria-pressed={wx === k} onClick={() => setWx(k)}>
+                {WX_LOOK[k].icon} {tr(WX_LOOK[k].label)}
+                {k === wxToday && <small className="muted"> · {tr('today')}</small>}
+              </button>
+            ))}
           </div>
         </div>
       )}

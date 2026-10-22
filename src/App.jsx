@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import AirQualityPage from './components/AirQualityPage.jsx';
 import ForecastPage from './components/ForecastPage.jsx';
 import PlannerPage from './components/PlannerPage.jsx';
-import RankingsPage from './components/RankingsPage.jsx';
 import MethodPage from './components/MethodPage.jsx';
 import { LocationBar } from './components/common.jsx';
 import { Welcome } from './components/Friendly.jsx';
@@ -16,7 +15,6 @@ const TABS = [
   { id: 'air', label: 'Air quality' },
   { id: 'forecast', label: 'Weather & solar' },
   { id: 'planner', label: 'Planner' },
-  { id: 'rankings', label: 'Rankings' },
   { id: 'method', label: 'How it works' },
 ];
 
@@ -39,7 +37,7 @@ function save(key, value) {
 }
 
 // Weather and solar used to be two pages; old links and bookmarks open the combined page.
-const OLD_TABS = { weather: 'forecast', solar: 'forecast' };
+const OLD_TABS = { weather: 'forecast', solar: 'forecast', rankings: 'air' };
 
 const tabFromHash = () => {
   const raw = window.location.hash.replace('#/', '');
@@ -111,16 +109,6 @@ export default function App() {
         {tab === 'air' && <AirQualityPage place={place} engine={engine} go={go} />}
         {tab === 'forecast' && <ForecastPage place={place} engine={engine} settings={settings} go={go} />}
         {tab === 'planner' && <PlannerPage place={place} engine={engine} settings={settings} setSettings={setSettings} />}
-        {tab === 'rankings' && (
-          <RankingsPage
-            engine={engine}
-            settings={settings}
-            onPick={(p) => {
-              setPlace(p);
-              go('air');
-            }}
-          />
-        )}
         {tab === 'method' && <MethodPage engine={engine} />}
         <footer className="footer">
           {tr(

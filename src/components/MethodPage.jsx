@@ -109,9 +109,6 @@ export default function MethodPage({ engine }) {
           <Step title="Haze source map">
             <P t="Fire hotspots from NASA's VIIRS satellites (last 2 days) are compared with the wind direction. Fires inside a 70° wedge pointing upwind, within 1,500 km, are the likely sources; they are grouped by region (e.g. Riau, Jambi, Central Kalimantan). Wind near the ground is a rough guide: smoke also travels higher up." />
           </Step>
-          <Step title="Township impact board">
-            <P t="Tomorrow's forecast output for one home is multiplied by the number of solar homes in each township, then turned into money saved (your tariff), CO₂ avoided (grid factor) and simple comparisons (trees, car kilometres)." />
-          </Step>
         </div>
       </div>
 

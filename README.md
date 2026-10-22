@@ -17,7 +17,6 @@ clouds, heat and dust) that decide how much power a rooftop makes.
 | **Air quality** | IQAir US AQI + official DOE API, DOE health advice, past 24 h, model forecast, a link to the best time to exercise, **haze source map** (NASA fire hotspots upwind of you), 3D haze view, today's/tomorrow's solar output |
 | **Weather & solar** | Weather now (temperature, feels-like, heat index, dew point, UV, wind, rain, cloud) and heat warnings; solar output in kWh for the picked day; a 7-day picker with weather and solar per day; next-24-hour chart; **where the solar goes** (ideal → inverter & wiring → heat → clouds & rain → haze → dust → output); hour-by-hour sunlight with/without haze; 3D view |
 | **Planner** | One-glance tiles, then **spare solar** (how many kWh are left over after normal home use, the best hours, and which appliances fit), the **battery & chores plan**, **EV charging planner** (cheapest hours, spare solar first), **best time to exercise** (stricter mode for kids/elderly/asthma) and your home settings |
-| **Rankings** | Townships/cities by DOE API, IQAir or tomorrow's solar output; all DOE stations; **township impact board** (kWh, RM saved and CO₂ avoided if N homes in each township have solar) |
 | **How it works** | The method, which model is live, data sources, honest limits |
 
 The **EN / BM** switch in the top bar changes the whole app to Bahasa Melayu (remembered in the
@@ -64,7 +63,7 @@ cities are listed from a built-in list instead.
 
 The key stays on the server (`api/iqair.js`); the browser never sees it. The free plan allows 5 calls a
 minute and 500 a day, so answers are cached for 15 minutes per location. That is plenty for a demo,
-but too few to rank many towns at once, which is why the Rankings page uses DOE readings. Check
+but too few to check many towns at once. Check
 IQAir's terms of use for the Community plan and keep the "Air quality: IQAir" credit in the footer.
 
 ## Connect NASA FIRMS for the haze source map (free, 2 minutes)
