@@ -6,7 +6,8 @@ import { lossBreakdown, soilingForDate } from '../lib/losses.js';
 import { tryDoeStations, nearestStation, doeLevel, DOE_LEVELS, DOE_ADVICE, DOE_SYMBOLS, DOE_SOURCE_URL } from '../lib/doe.js';
 import { getIqair, IQAIR_POLLUTANTS, IQAIR_URL, IQAIR_CONDITIONS } from '../lib/iqair.js';
 import { AqiBars } from './charts.jsx';
-import { InShort, Tip, Tile } from './Friendly.jsx';
+import { Tip } from './Friendly.jsx';
+import { Cloud, WeatherCard } from './Dashboard.jsx';
 import { airSummary } from '../lib/summary.js';
 import HazeScene3D from './HazeScene3D.jsx';
 import { TOWNSHIPS } from '../lib/places.js';
@@ -83,6 +84,15 @@ export default function AirQualityPage({ place, engine, go }) {
     return { source: solarData.data.source, today: day(today), tomorrow: day(addDays(today, 1)) };
   }, [solarData.data, engine, place, today]);
 
+  // Weather right now for the sky card (same source as the Weather & solar page).
+  const wxNow = useMemo(() => {
+    const d = solarData.data;
+    if (!d?.current) return null;
+    const now = Date.now() / 1000;
+    const next = d.hours.filter((h) => h.t >= now - 1800).slice(0, 24);
+    return { c: d.current, rainNext24: next.reduce((t, h) => t + (h.rain || 0), 0), hi: null };
+  }, [solarData.data]);
+
   if (doe.loading || iq.loading) return <Loading text="Loading IQAir and DOE readings…" />;
 
   const st = official?.station;
@@ -105,24 +115,8 @@ export default function AirQualityPage({ place, engine, go }) {
           </span>
         </div>
       )}
-      <div className="place-title">
-        <h1>{tr('Air quality')}</h1>
-        <span className="sub">{place.area}</span>
-        <span className="stamp">
-          {iqa && iqaTs ? tr('IQAir updated {time}', { time: fmtTime(iqaTs, MY) }) : ''}
-          {iqa && iqaTs && st ? ' · ' : ''}
-          {st ? tr('DOE reading for {time}', { time: fmtTime(reading.t, MY) }) : ''}
-        </span>
-      </div>
+      <h1 className="sr-only">{tr('Air quality')}</h1>
 
-      <InShort
-        items={airSummary({
-          iq: iqa,
-          iqLevel: il,
-          doe: st ? { api: reading.api, station: st.name } : null,
-          doeLevel: { ...dl, key: st ? DOE_TO_TIPS[dl.key] || dl.key : null },
-        })}
-      />
 
       {!iqa && !st ? (
         <div className="card section">
@@ -135,87 +129,57 @@ export default function AirQualityPage({ place, engine, go }) {
           </p>
         </div>
       ) : (
-        <section className="hero aq-hero section" aria-label={tr('Current air quality')}>
-          {iqa ? (
-            <div className="hero-aqi" style={{ background: il.color, color: il.ink }}>
-              <span className="label">
-                US AQI · IQAir · {iqa.city}
-                <Tip term="usAqi" />
-              </span>
-              <div className="big">
-                <span className="num">{Math.round(iqa.aqius)}</span>
-                <span className="cat">{tr(il.label)}</span>
-                <span className="face" aria-hidden="true">{il.face}</span>
-              </div>
-              <span className="main-pol">
-                {IQAIR_POLLUTANTS[iqa.mainus] ? `${tr('Main pollutant')}: ${tr(IQAIR_POLLUTANTS[iqa.mainus])}` : ''}
-              </span>
-              <AqiScale aqi={iqa.aqius} />
+        <div className="dash section">
+          <div className="dash-main">
+            <div className="scene-row">
+              <section className="scene-card scene-blue aq-scene" aria-label={tr('Current air quality')}>
+                <div className="scene-art" aria-hidden="true">
+                  <Cloud className="sc1" />
+                  <Cloud className="sc4" />
+                </div>
+                <div className="scene-head">
+                  <span className="scene-badge" aria-hidden="true">{iqa ? il.face : '🏛️'}</span>
+                  <span>
+                    <b>
+                      {iqa ? `US AQI · IQAir` : tr('Official API · Department of Environment')}
+                      <Tip term={iqa ? 'usAqi' : 'doeApi'} />
+                    </b>
+                    <small>{iqa ? iqa.city : st.name}</small>
+                  </span>
+                </div>
+                <div className="scene-big">
+                  <span className="num">{iqa ? Math.round(iqa.aqius) : reading.api}</span>
+                  <span className="mini-chip" style={{ background: (iqa ? il : dl).color, color: (iqa ? il : dl).ink }}>
+                    {tr((iqa ? il : dl).label)}
+                  </span>
+                </div>
+                <div className="scene-cond">
+                  {iqa
+                    ? IQAIR_POLLUTANTS[iqa.mainus]
+                      ? `${tr('Main pollutant')}: ${tr(IQAIR_POLLUTANTS[iqa.mainus])}`
+                      : ''
+                    : DOE_SYMBOLS[reading.symbol]
+                      ? `${tr('Dominant pollutant')}: ${tr(DOE_SYMBOLS[reading.symbol])}`
+                      : ''}
+                </div>
+                <div className="aq-scale-panel">{iqa ? <AqiScale aqi={iqa.aqius} /> : <DoeScale api={reading.api} />}</div>
+              </section>
+              {wxNow ? <WeatherCard W={wxNow} night={wxNow.c.isDay === 0} placeName={place.name} /> : <div className="scene-card scene-warm" />}
             </div>
-          ) : (
-            <div className="hero-aqi" style={{ background: dl.color, color: dl.ink }}>
-              <span className="label">
-                {tr('Official API · Department of Environment')}
-                <Tip term="doeApi" />
-              </span>
-              <div className="big">
-                <span className="num">{reading.api}</span>
-                <span className="cat">{tr(dl.label)}</span>
-              </div>
-              <span className="main-pol">
-                {DOE_SYMBOLS[reading.symbol] ? `${tr('Dominant pollutant')}: ${tr(DOE_SYMBOLS[reading.symbol])} · ` : ''}
-                {tr('Station: {name} ({km} km away)', { name: st.name, km: km(official.distanceKm) })}
-              </span>
-              <DoeScale api={reading.api} />
-            </div>
-          )}
-          <div className="tiles hero-tiles">
-            {st && (
-              <Tile
-                wide
-                icon="🏛️"
-                tone="plain"
-                term="doeApi"
-                value={
-                  <>
-                    <span className="badge" style={{ background: dl.color, color: dl.ink, fontSize: 22, padding: '2px 12px' }}>{reading.api}</span> {tr(dl.label)}
-                  </>
-                }
-                valueSmall
-                label={`${tr('Official DOE API')} · ${st.name}`}
-                sub={tr('{km} km away', { km: km(official.distanceKm) })}
+
+            <section className="card">
+              <HazeScene3D
+                aqi={iqa ? iqa.aqius : null}
+                doeApi={st ? reading.api : null}
+                label={`${tr('Right now')} · ${place.name}`}
+                signTitle={TOWNSHIPS.some((t) => t.name === place.name) ? place.name : null}
+                interactive={false}
+                height={300}
+                weatherCode={solarData.data?.current?.weather_code ?? null}
               />
-            )}
-            {iqa ? (
-              <>
-                <Tile icon="🌤️" tone="sky" value={tr(IQAIR_CONDITIONS[(w.icon || '').slice(0, 2)]) || '—'} valueSmall label={tr('Conditions')} />
-                <Tile icon="🌡️" tone="sun" value={w.tempC ?? '–'} unit="°C" label={tr('Temperature')} />
-                <Tile icon="💧" tone="sky" value={w.humidity ?? '–'} unit="%" label={tr('Humidity')} />
-                <Tile icon="🌬️" tone="haze" value={w.windMs !== null && w.windMs !== undefined ? Math.round(w.windMs * 3.6) : '–'} unit="km/h" label={tr('Wind')} />
-              </>
-            ) : (
-              <Tile wide icon="ℹ️" value={tr('No IQAir reading right now')} valueSmall label="IQAir" />
-            )}
-          </div>
-        </section>
-      )}
+            </section>
 
-      {(iqa || st) && (
-        <div className="section">
-          <HazeScene3D
-            aqi={iqa ? iqa.aqius : null}
-            doeApi={st ? reading.api : null}
-            label={`${tr('Right now')} · ${place.name}`}
-            signTitle={TOWNSHIPS.some((t) => t.name === place.name) ? place.name : null}
-            interactive={false}
-            height={300}
-            weatherCode={solarData.data?.current?.weather_code ?? null}
-          />
-        </div>
-      )}
-
-      {(iqa || st) && (
-        <div className="grid grid-2 section">
+            <div className="two-col">
           <div className="card">
             <h2>
               ⚖ {tr('IQAir and DOE side by side')}
@@ -271,15 +235,9 @@ export default function AirQualityPage({ place, engine, go }) {
               ))}
             </div>
           </div>
-        </div>
-      )}
+            </div>
 
-      <Suspense fallback={<div className="card section">{tr('Loading the haze source map…')}</div>}>
-        <HazeSourceMap place={place} windFromDeg={solarData.data?.current?.windDir ?? (w.windDir ?? null)} windKmh={solarData.data?.current?.wind ?? (w.windMs ? w.windMs * 3.6 : null)} />
-      </Suspense>
-
-      <div className="grid grid-2 section">
-        {st ? (
+            {st ? (
           <div className="card">
             <div className="spread">
               <h2>{tr('Past 24 hours (DOE)')}</h2>
@@ -308,8 +266,58 @@ export default function AirQualityPage({ place, engine, go }) {
             </p>
           </div>
         )}
-        <SolarTeaser solar={solar} loading={solarData.loading || !engine} go={go} />
-      </div>
+          </div>
+
+          <aside className="side-panel" aria-label={tr('Air quality')}>
+            <div className="sp-head">
+              <div>
+                <b>{tr('Air right now')}</b>
+                <small>📍 {place.name}</small>
+              </div>
+              <span className="sp-temp" style={{ color: (iqa ? il : dl).color === '#f6d24c' ? 'var(--sun-deep)' : undefined }}>{iqa ? Math.round(iqa.aqius) : reading.api}</span>
+            </div>
+            {st && (
+              <div className="uv-card">
+                <span className="uv-ic" aria-hidden="true">🏛️</span>
+                <div>
+                  <div className="uv-top">
+                    <b>API {reading.api}</b>
+                    <span className="uv-badge" style={{ background: dl.color, color: dl.ink }}>{tr(dl.label)}</span>
+                    <Tip term="doeApi" />
+                  </div>
+                  <small>
+                    DOE · {st.name} · {tr('{km} km away', { km: km(official.distanceKm) })} · {fmtTime(reading.t, MY)}
+                  </small>
+                </div>
+              </div>
+            )}
+            <h3 className="sp-title">{tr('In short')}</h3>
+            <ul className="sp-days">
+              {airSummary({
+                iq: iqa,
+                iqLevel: il,
+                doe: st ? { api: reading.api, station: st.name } : null,
+                doeLevel: { ...dl, key: st ? DOE_TO_TIPS[dl.key] || dl.key : null },
+              }).map((it, i) => (
+                <li key={i}>
+                  <span className="sp-ic" aria-hidden="true">{it.icon}</span>
+                  <span className="sp-mid">
+                    <b>{it.text}</b>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <SolarTeaser solar={solar} loading={solarData.loading || !engine} go={go} />
+            <p className="small muted" style={{ margin: 0 }}>
+              {iqa && iqaTs ? tr('IQAir updated {time}', { time: fmtTime(iqaTs, MY) }) : ''}
+            </p>
+          </aside>
+        </div>
+      )}
+
+      <Suspense fallback={<div className="card section">{tr('Loading the haze source map…')}</div>}>
+        <HazeSourceMap place={place} windFromDeg={solarData.data?.current?.windDir ?? (w.windDir ?? null)} windKmh={solarData.data?.current?.wind ?? (w.windMs ? w.windMs * 3.6 : null)} />
+      </Suspense>
     </>
   );
 }

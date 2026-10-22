@@ -275,7 +275,6 @@ export const MS = {
   "Next 24 hours": "24 jam akan datang",
   "Temperature and rain for the next hours": "Suhu dan hujan untuk beberapa jam akan datang",
   "Heat index, dew point, warnings, UV, rain and solar": "Indeks haba, takat embun, amaran, UV, hujan dan solar",
-  "Pick a day to see its weather and solar output. Bar = expected output. Past days replay real readings; future days use the weather and haze forecast.": "Pilih hari untuk melihat cuaca dan output solarnya. Bar = output dijangka. Hari lepas memaparkan bacaan sebenar; hari akan datang menggunakan ramalan cuaca dan jerebu.",
   "daily totals (light <10 mm, heavy ≥30 mm).": "jumlah harian (ringan <10 mm, lebat ≥30 mm).",
   "Jump to a date": "Lompat ke tarikh",
   "Reset to today": "Kembali ke hari ini",
@@ -572,4 +571,10 @@ export const MS = {
   "Shade at midday, hat, sunscreen": "Berteduh waktu tengah hari, topi, pelindung matahari",
   "Avoid the midday sun": "Elak matahari tengah hari",
   "Stay indoors at midday": "Duduk di dalam waktu tengah hari",
+  'Pick a day to see its weather and solar output. Past days replay real readings; future days use the weather and haze forecast.': 'Pilih hari untuk melihat cuaca dan hasil solarnya. Hari lepas memaparkan bacaan sebenar; hari akan datang guna ramalan cuaca dan jerebu.',
+  'See {day}': 'Lihat {day}',
+  'Sunrise – sunset': 'Matahari terbit – terbenam',
+  'Sunshine': 'Cahaya matahari',
+  'Your solar': 'Solar anda',
+  '{h} h': '{h} j',
 };

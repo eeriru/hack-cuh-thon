@@ -279,7 +279,7 @@ const UV_TEXT = {
 };
 
 /** Right-hand panel: sun arc, UV and the coming days. */
-export function SidePanel({ W, uv, days, today, placeName, go }) {
+export function SidePanel({ W, uv, days, today, placeName, go, onPick }) {
   const d = W.todayDaily;
   const now = Date.now() / 1000;
   const rise = d?.sunrise;
@@ -345,6 +345,7 @@ export function SidePanel({ W, uv, days, today, placeName, go }) {
       <ul className="sp-days">
         {coming.map((x) => (
           <li key={x.d}>
+            <button className="sp-day" onClick={() => onPick?.(x.d)} aria-label={tr('See {day}', { day: fmtDate(x.d, { weekday: 'long' }) })}>
             <span className="sp-ic" aria-hidden="true">{weatherIcon(x.wx.code)}</span>
             <span className="sp-mid">
               <small>{fmtDate(x.d, { weekday: 'short', day: 'numeric', month: 'short' })}</small>
@@ -355,6 +356,7 @@ export function SidePanel({ W, uv, days, today, placeName, go }) {
               {x.daily?.tmin !== null && x.daily?.tmin !== undefined && <span className="muted"> / {Math.round(x.daily.tmin)}°</span>}
               <small>☀ {x.breakdown.final.toFixed(1)} kWh</small>
             </span>
+            </button>
           </li>
         ))}
       </ul>
