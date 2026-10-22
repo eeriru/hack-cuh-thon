@@ -480,7 +480,6 @@ export const MS = {
   "⚙ Your home": "⚙ Rumah anda",
 
   // Solar budget and EV card
-  "Aircon {n} h": "Penghawa dingin {n} jam",
   "Battery stores": "Disimpan bateri",
   "Best time": "Masa terbaik",
   "Best way to charge": "Cara terbaik mengecas",
@@ -515,7 +514,6 @@ export const MS = {
   "home and battery use it all": "rumah dan bateri menggunakan semuanya",
   "the car is away in the daytime": "kereta tiada di rumah pada waktu siang",
   "{km} km of driving": "{km} km pemanduan",
-  "Run these in those hours:": "Guna peralatan ini pada waktu itu:",
   "Spare solar": "Lebihan solar",
   "One shared budget: your home, the chores in the battery plan and the EV's solar charging are taken off first, so nothing is counted twice. Spare solar is what is left in each hour. Right now it charges the battery or goes to the grid. Run appliances in these hours instead of the evening and they use solar straight from the roof, so you buy less power later. Appliance figures are typical: washing machine 0.5 kWh, water heater 1.5 kWh, iron 0.8 kWh, dishwasher 1.2 kWh, dryer 2.5 kWh, aircon about 1 kWh an hour.": "Satu bajet dikongsi: rumah anda, kerja rumah dalam pelan bateri dan cas solar EV ditolak dahulu, jadi tiada yang dikira dua kali. Lebihan solar ialah baki tenaga solar pada setiap jam. Sekarang ia mengecas bateri atau dihantar ke grid. Guna peralatan pada waktu ini dan bukan pada waktu petang, jadi ia menggunakan solar terus dari bumbung dan anda membeli kurang tenaga kemudian. Angka peralatan ialah anggaran biasa: mesin basuh 0.5 kWh, pemanas air 1.5 kWh, seterika 0.8 kWh, mesin basuh pinggan 1.2 kWh, pengering 2.5 kWh, penghawa dingin kira-kira 1 kWh sejam.",
   "To the grid": "Ke grid",
@@ -573,7 +571,6 @@ export const MS = {
   "Ideas based on this day's forecast: ways to use your spare solar, and simple habits that cut your bill.": "Idea berdasarkan ramalan hari ini: cara menggunakan lebihan solar anda, dan tabiat mudah yang mengurangkan bil.",
   "Ideas for {day}": "Idea untuk {day}",
   "Plans when to charge your car: free spare solar first, then the cheapest grid hours while it is plugged in at home. Fill in your car and when you are home.": "Merancang bila mengecas kereta anda: lebihan solar percuma dahulu, kemudian waktu grid paling murah semasa kereta dipasang di rumah. Isi butiran kereta dan masa anda di rumah.",
-  "Spare solar is what your panels make beyond what your home uses. This shows how much you have, the best hours to use it, and what it can run for free instead of buying power in the evening.": "Lebihan solar ialah tenaga yang dijana panel melebihi penggunaan rumah anda. Ini menunjukkan berapa banyak yang ada, waktu terbaik menggunakannya, dan apa yang boleh dijalankan secara percuma dan bukannya membeli elektrik pada waktu petang.",
   "The planner turns the solar forecast into a plan for your home. Pick a day from the list, then see how much free solar you will have, when to run chores and the battery, and when to charge your EV. Tap a card to jump to it.": "Perancang menukar ramalan solar kepada pelan untuk rumah anda. Pilih hari daripada senarai, kemudian lihat berapa banyak solar percuma yang anda ada, bila menjalankan kerja rumah dan bateri, dan bila mengecas EV. Ketik kad untuk pergi ke bahagiannya.",
   "Make the most of your energy": "Manfaatkan tenaga anda sepenuhnya",
   "Charge everything at midday": "Cas semuanya pada tengah hari",
@@ -603,4 +600,5 @@ export const MS = {
   "A fan uses a small part of the power of an aircon. Open the windows in the evening if the air is clean.": "Kipas menggunakan sebahagian kecil tenaga penghawa dingin. Buka tingkap pada waktu petang jika udara bersih.",
   "Switch off at the wall": "Matikan suis di dinding",
   "TVs, decoders and chargers still draw power on standby. Switch them off at night.": "TV, dekoder dan pengecas masih menggunakan tenaga dalam mod sedia. Matikan suisnya pada waktu malam.",
+  "Spare solar is what your panels make beyond what your home uses. This shows how much you have and the best hours to use it, so you buy less power in the evening. The ideas card below suggests what to run.": "Lebihan solar ialah tenaga yang dijana panel melebihi penggunaan rumah anda. Ini menunjukkan berapa banyak yang ada dan waktu terbaik menggunakannya, supaya anda membeli kurang elektrik pada waktu petang. Kad idea di bawah mencadangkan apa yang boleh dijalankan.",
 };

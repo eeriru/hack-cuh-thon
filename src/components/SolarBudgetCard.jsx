@@ -20,7 +20,7 @@ export default function SolarBudgetCard({ budget: b, rate, choreHours = [] }) {
         ☀ {tr('Use your spare solar')}
         <Tip text="One shared budget: your home, the chores in the battery plan and the EV's solar charging are taken off first, so nothing is counted twice. Spare solar is what is left in each hour. Right now it charges the battery or goes to the grid. Run appliances in these hours instead of the evening and they use solar straight from the roof, so you buy less power later. Appliance figures are typical: washing machine 0.5 kWh, water heater 1.5 kWh, iron 0.8 kWh, dishwasher 1.2 kWh, dryer 2.5 kWh, aircon about 1 kWh an hour." />
       </h2>
-      <p className="sec-lead">{tr('Spare solar is what your panels make beyond what your home uses. This shows how much you have, the best hours to use it, and what it can run for free instead of buying power in the evening.')}</p>
+      <p className="sec-lead">{tr('Spare solar is what your panels make beyond what your home uses. This shows how much you have and the best hours to use it, so you buy less power in the evening. The ideas card below suggests what to run.')}</p>
 
       <div className="budget-head">
         <div className={`budget-big ${none ? 'none' : ''}`}>
@@ -66,22 +66,7 @@ export default function SolarBudgetCard({ budget: b, rate, choreHours = [] }) {
         </div>
       </div>
 
-      {b.picks.length > 0 ? (
-        <>
-          <div className="small" style={{ fontWeight: 700, margin: '14px 0 8px' }}>{tr('Run these in those hours:')}</div>
-          <div className="budget-picks">
-            {b.picks.map((p) => (
-              <span key={p.key} className="pick">
-                <span aria-hidden="true">{p.icon}</span>
-                {p.key === 'aircon' ? tr('Aircon {n} h', { n: p.hours }) : tr(p.label)}
-                <small>{p.kwh.toFixed(1)} kWh</small>
-              </span>
-            ))}
-          </div>
-        </>
-      ) : (
-        <p className="small muted" style={{ margin: '12px 0 0' }}>{tr('Your home uses all the solar. Nothing to shift.')}</p>
-      )}
+      {none && <p className="small muted" style={{ margin: '12px 0 0' }}>{tr('Your home uses all the solar. Nothing to shift.')}</p>}
     </div>
   );
 }

@@ -1,16 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getPlaceData, addDays, todayMY, localDateOf } from '../lib/api.js';
 import { computeHazeLoss } from '../lib/model.js';
 import { DEFAULT_SYSTEM } from '../lib/solar.js';
 import { hourRanges } from '../lib/battery.js';
-import { hazeLevel } from '../lib/aqi.js';
 import LossBreakdown from './LossBreakdown.jsx';
-import { weatherIcon, WEATHER_TEXT, heatIndex, dewPoint, heatRisk, uvLevel, rainLevel, compass } from '../lib/weather.js';
+import { weatherIcon, heatIndex, dewPoint, heatRisk, uvLevel } from '../lib/weather.js';
 import HazeScene3D from './HazeScene3D.jsx';
-import { WeatherCard, AirCard, TempCurve, TomorrowCard, SidePanel, Cloud } from './Dashboard.jsx';
+import { WeatherCard, AirCard, TempCurve, TomorrowCard, SidePanel } from './Dashboard.jsx';
+import SolarForecast from './SolarForecast.jsx';
 import { TOWNSHIPS } from '../lib/places.js';
 import { useAsync, Loading, DemoBanner, fmtDate, fmtTime } from './common.jsx';
-import { InShort, Tip, More, Tile } from './Friendly.jsx';
+import { InShort, Tip, More } from './Friendly.jsx';
 import { solarSummary, weatherSummary } from '../lib/summary.js';
 import { buildDays, homeFromSettings, dayHomeFor, planForDay, avgRate as avgRateOf } from '../lib/forecastDays.js';
 import { tr } from '../lib/i18n.js';
@@ -19,7 +19,6 @@ const MAX_PAST = 85;
 const MAX_AHEAD = 6; // a 7-day forecast (today + 6)
 
 const fmt = (v, d = 0) => (v === null || v === undefined || Number.isNaN(v) ? '–' : v.toFixed(d));
-const has = (v) => v !== null && v !== undefined;
 
 // One page for the weather and the solar forecast: weather right now, then the
 // selected day's solar output, the day picker, and the details below.
@@ -53,11 +52,6 @@ export default function ForecastPage({ place, engine, settings, go }) {
 
   const current = days.find((x) => x.d === selected) || days.find((x) => x.d === today) || days[days.length - 1];
   const dayHome = useMemo(() => (current ? dayHomeFor(home, current.d) : home), [home, current]);
-  const barRef = useRef(null);
-  useEffect(() => {
-    const el = barRef.current?.querySelector('.datebtn.active');
-    if (el && barRef.current) barRef.current.scrollLeft = el.offsetLeft - barRef.current.offsetLeft - 40;
-  }, [current?.d, days.length]);
 
   // Same calculation as the headline, for the 3D scene's haze slider: scale every hour's haze
   // so the day's average matches the slider, and rerun the solar model. At today's level it
@@ -121,8 +115,6 @@ export default function ForecastPage({ place, engine, settings, go }) {
     const hr = new Date((t + W.offsetSec) * 1000).getUTCHours();
     return hr >= 7 && hr < 19;
   };
-  const wxLoss = B.steps.filter((s) => ['heat', 'clouds', 'haze'].includes(s.key)).reduce((t, s) => t + Math.max(0, s.kwh), 0);
-  const haze = hazeLevel(L.meanAod);
   const dayWord = current.d === today ? tr('today') : current.d === addDays(today, 1) ? tr('tomorrow') : tr('on {date}', { date: fmtDate(current.d) });
   const isPast = current.d < today;
   const avgRate = avgRateOf(dayHome.tariff);
@@ -151,6 +143,25 @@ export default function ForecastPage({ place, engine, settings, go }) {
     <>
       <DemoBanner source={data.source} />
       <h1 className="sr-only">{tr('Weather & solar')}</h1>
+      <InShort
+        title={`${tr('In short')} · ${isPast ? fmtDate(current.d, { weekday: 'long', day: 'numeric', month: 'short' }) : current.d === today ? tr('today') : current.d === addDays(today, 1) ? tr('tomorrow') : fmtDate(current.d)}`}
+        items={[...weatherItems, ...solarSummary({
+          day: {
+            label: dayWord,
+            final: B.final,
+            ideal: B.ideal,
+            hazePct: L.lossPct,
+            biggest: B.biggest,
+            valueRm: B.final * avgRate,
+          },
+          days: days
+            .filter((x) => x.d >= today)
+            .map((x) => ({ label: x.d === today ? tr('today') : fmtDate(x.d, { weekday: 'long' }), final: x.breakdown.final })),
+          dailyUse: home.dailyKwh,
+          isPast,
+          tip: plan && plan.flexWhy === 'sunniest' && !isPast ? tr('Laundry & water heater: {hours}', { hours: hourRanges(plan.flexHours) }) : null,
+        })]}
+      />
 
 
 
@@ -193,118 +204,16 @@ export default function ForecastPage({ place, engine, settings, go }) {
       )}
 
 
-      <InShort
-        title={`${tr('In short')} · ${isPast ? fmtDate(current.d, { weekday: 'long', day: 'numeric', month: 'short' }) : current.d === today ? tr('today') : current.d === addDays(today, 1) ? tr('tomorrow') : fmtDate(current.d)}`}
-        items={[...weatherItems, ...solarSummary({
-          day: {
-            label: dayWord,
-            final: B.final,
-            ideal: B.ideal,
-            hazePct: L.lossPct,
-            biggest: B.biggest,
-            valueRm: B.final * avgRate,
-          },
-          days: days
-            .filter((x) => x.d >= today)
-            .map((x) => ({ label: x.d === today ? tr('today') : fmtDate(x.d, { weekday: 'long' }), final: x.breakdown.final })),
-          dailyUse: home.dailyKwh,
-          isPast,
-          tip: plan && plan.flexWhy === 'sunniest' && !isPast ? tr('Laundry & water heater: {hours}', { hours: hourRanges(plan.flexHours) }) : null,
-        })]}
+
+      <SolarForecast
+        days={days}
+        current={current}
+        today={today}
+        onSelect={setSelected}
+        rate={avgRate}
+        offsetSec={data.offsetSec}
+        dateRange={{ min: addDays(today, -MAX_PAST), max: addDays(today, MAX_AHEAD), onDate: (d) => { setAnchor(d); setSelected(d); } }}
       />
-
-      <section id="solar" className="section">
-        <div className="sec-head">
-          <h2>
-            ☀ {tr('Your solar')}
-            <Tip text="Pick a day to see its weather and solar output. Past days replay real readings; future days use the weather and haze forecast." />
-          </h2>
-          <label className="date-jump">
-            <span aria-hidden="true">📅</span>
-            <span className="sr-only">{tr('Jump to a date')}</span>
-            <input
-              type="date"
-              min={addDays(today, -MAX_PAST)}
-              max={addDays(today, MAX_AHEAD)}
-              value={current.d}
-              onChange={(e) => {
-                if (!e.target.value) return;
-                setAnchor(e.target.value);
-                setSelected(e.target.value);
-              }}
-            />
-          </label>
-        </div>
-        <div className="day-strip datebar" role="tablist" ref={barRef}>
-          {days.map(({ d, breakdown, wx }) => (
-            <button key={d} role="tab" aria-selected={d === current.d} className={`day-pill datebtn ${d === current.d ? 'active' : ''}`} onClick={() => setSelected(d)}>
-              <small>{d === today ? tr('Today') : fmtDate(d, { weekday: 'short', day: 'numeric' })}</small>
-              <span className="dp-ic" aria-hidden="true">{weatherIcon(wx.code)}</span>
-              <b>{breakdown.final.toFixed(1)}</b>
-              <small>kWh</small>
-            </button>
-          ))}
-        </div>
-
-        <div className="solar-grid">
-          <div className="scene-card scene-solar">
-            <div className="scene-art" aria-hidden="true">
-              <span className="scene-sun" />
-              <Cloud className="sc2" />
-              <span className="roof">
-                <i />
-                <i />
-                <i />
-              </span>
-            </div>
-            <div className="scene-head">
-              <span className="scene-badge" aria-hidden="true">☀️</span>
-              <span>
-                <b>{isPast ? tr('Replay') : tr('Forecast')}</b>
-                <small>{fmtDate(current.d, { weekday: 'long', day: 'numeric', month: 'long' })}</small>
-              </span>
-            </div>
-            <div className="scene-big">
-              <span className="num">{B.final.toFixed(1)}</span>
-              <span className="mini-chip">kWh {dayWord}</span>
-            </div>
-            <div className="scene-cond solar-sub">
-              <span>
-                ≈ RM {(B.final * avgRate).toFixed(2)}
-                <Tip term="kwh" label="What is a kWh?" />
-              </span>
-              <span>
-                {tr('{pct}% of ideal', { pct: B.performancePct.toFixed(0) })}
-                <Tip term="ideal" label="What is ideal output?" />
-              </span>
-              <span>
-                {tr('Biggest loss')}: {tr(B.biggest.label).toLowerCase()}
-              </span>
-            </div>
-            <div className="scene-chips">
-              <div className="sc-chip navy">
-                <small>
-                  {tr('Lost to weather')}
-                  <Tip text="Heat, clouds & rain and haze together, compared with an ideal cool, clear day. The breakdown below shows each one." />
-                </small>
-                <b>{wxLoss.toFixed(1)} kWh</b>
-              </div>
-              <div className="sc-chip lime">
-                <small>☁ {tr('Cloud cover (daylight)')}</small>
-                <b>{Math.round(L.meanCloud)}%</b>
-              </div>
-              <div className="sc-chip white">
-                <small>
-                  🌫 {tr('Haze')}
-                  <Tip term="aod" />
-                </small>
-                <b>{tr(haze.label)}</b>
-              </div>
-            </div>
-          </div>
-          {current.daily && <DayWeather daily={current.daily} offsetSec={data.offsetSec} label={fmtDate(current.d, { weekday: 'long', day: 'numeric', month: 'short' })} />}
-        </div>
-      </section>
 
       <section className="card section">
         <h2>🕐 {tr('Next 24 hours')}</h2>
@@ -363,33 +272,5 @@ export default function ForecastPage({ place, engine, settings, go }) {
         </div>
       </More>
     </>
-  );
-}
-
-function DayWeather({ daily: d, offsetSec, label }) {
-  const rl = rainLevel(d.rain);
-  const ul = uvLevel(d.uvMax);
-  const rows = [
-    [weatherIcon(d.weather_code), tr('Weather'), tr(WEATHER_TEXT[d.weather_code]) || '—'],
-    ['🌡️', tr('Temperature'), `${fmt(d.tmax)}° / ${fmt(d.tmin)}°${has(d.feelsMax) ? ` · ${tr('feels')} ${fmt(d.feelsMax)}°` : ''}`],
-    ['💧', tr('Rain'), <span className={`tone-${rl.tone}`}>{fmt(d.rain, 1)} mm{has(d.rainChance) ? ` · ${Math.round(d.rainChance)}%` : ''}</span>],
-    ['🔆', 'UV', <span>{fmt(d.uvMax)} <span className={`tone-${ul.tone}`}>{tr(ul.label)}</span></span>],
-    ['🌬️', tr('Wind'), `${fmt(d.windMax)} km/h ${compass(d.windDir)}`],
-    has(d.sunshineSec) && ['☀️', tr('Sunshine'), tr('{h} h', { h: fmt(d.sunshineSec / 3600, 1) })],
-    d.sunrise && d.sunset && ['🌅', tr('Sunrise – sunset'), `${fmtTime(d.sunrise, offsetSec)} – ${fmtTime(d.sunset, offsetSec)}`],
-  ].filter(Boolean);
-  return (
-    <div className="card day-panel" aria-label={tr('Weather for {day}', { day: label })}>
-      <h3>{label}</h3>
-      <ul className="row-list">
-        {rows.map(([ic, k, v]) => (
-          <li key={k}>
-            <span className="rl-ic" aria-hidden="true">{ic}</span>
-            <span className="rl-k">{k}</span>
-            <b className="rl-v">{v}</b>
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }

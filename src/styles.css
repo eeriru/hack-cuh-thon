@@ -652,7 +652,7 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-
 
 /* Dashboard grid */
 .dash { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
-.dash-main { display: grid; gap: 20px; min-width: 0; }
+.dash-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; min-width: 0; }
 .scene-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .temp-row { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 20px; }
 .stamp.small { margin: 10px 4px 0; }
@@ -757,7 +757,7 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-
 
 /* Responsive */
 @media (max-width: 1180px) {
-  .dash { grid-template-columns: 1fr; }
+  .dash { grid-template-columns: minmax(0, 1fr); }
   .side-panel { position: static; grid-template-columns: 1fr 1fr; align-items: start; }
   .side-panel .sp-head, .side-panel .sp-title, .side-panel .sp-days, .side-panel .sp-btn { grid-column: 1 / -1; }
 }
