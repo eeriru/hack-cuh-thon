@@ -7,7 +7,7 @@ import { hazeLevel } from '../lib/aqi.js';
 import LossBreakdown from './LossBreakdown.jsx';
 import { weatherIcon, WEATHER_TEXT, heatIndex, dewPoint, heatRisk, uvLevel, rainLevel, compass } from '../lib/weather.js';
 import HazeScene3D from './HazeScene3D.jsx';
-import AirNow from './AirNow.jsx';
+import { WeatherCard, AirCard, TempCurve, TomorrowCard, SidePanel } from './Dashboard.jsx';
 import { TOWNSHIPS } from '../lib/places.js';
 import { useAsync, Loading, DemoBanner, fmtDate, fmtTime } from './common.jsx';
 import { InShort, Tip, More, Tile } from './Friendly.jsx';
@@ -45,6 +45,11 @@ export default function ForecastPage({ place, engine, settings, go }) {
   const home = useMemo(() => homeFromSettings(settings), [settings]);
 
   const days = useMemo(() => buildDays(data, { engine, place, system, startDate, endDate }), [data, engine, place, system, startDate, endDate]);
+  // Days around today for the dashboard (tomorrow card, coming days), whatever date is picked.
+  const nowDays = useMemo(
+    () => buildDays(nowQ.data, { engine, place, system, startDate: nowRange.startDate, endDate: nowRange.endDate }),
+    [nowQ.data, engine, place, system, nowRange.startDate, nowRange.endDate]
+  );
 
   const current = days.find((x) => x.d === selected) || days.find((x) => x.d === today) || days[days.length - 1];
   const dayHome = useMemo(() => (current ? dayHomeFor(home, current.d) : home), [home, current]);
@@ -145,14 +150,36 @@ export default function ForecastPage({ place, engine, settings, go }) {
   return (
     <>
       <DemoBanner source={data.source} />
-      <div className="place-title">
-        <h1>{tr('Weather & solar')}</h1>
-        <span className="sub">
-          {place.name} · {settings.kwp} kW {tr('solar')}
-          <Tip term="kwp" label="What is kW / kWp?" />
-        </span>
-        <span className="stamp">{tr('Updated {time}', { time: W.c.time ? fmtTime(W.c.time, W.offsetSec) : '—' })}</span>
+      <h1 className="sr-only">{tr('Weather & solar')}</h1>
+
+
+
+      <div className="dash section">
+        <div className="dash-main">
+          <div className="scene-row">
+            <WeatherCard W={W} night={night} placeName={place.name} />
+            <AirCard place={place} go={go} />
+          </div>
+          <div className="temp-row">
+            <TempCurve hours={nowQ.data.hours} offsetSec={W.offsetSec} today={today} />
+            <TomorrowCard day={nowDays.find((x) => x.d === addDays(today, 1))} today={today} go={go} />
+          </div>
+        </div>
+        <SidePanel W={W} uv={W.uv} days={nowDays} today={today} placeName={place.name} go={go} />
       </div>
+      <p className="stamp small muted">
+        {place.name} · {settings.kwp} kW {tr('solar')}
+        <Tip term="kwp" label="What is kW / kWp?" /> · {tr('Updated {time}', { time: W.c.time ? fmtTime(W.c.time, W.offsetSec) : '—' })}
+      </p>
+
+
+      {W.hi !== null && W.hi >= 32 && (
+        <div className="card section risk-card">
+          <h2>🥵 {tr('Heat warning')}: {tr(W.risk.label).toLowerCase()}</h2>
+          <p style={{ margin: 0, color: 'var(--ink-2)' }}>{tr(W.risk.advice)}</p>
+        </div>
+      )}
+
 
       <InShort
         title={`${tr('In short')} · ${isPast ? fmtDate(current.d, { weekday: 'long', day: 'numeric', month: 'short' }) : current.d === today ? tr('today') : current.d === addDays(today, 1) ? tr('tomorrow') : fmtDate(current.d)}`}
@@ -173,43 +200,6 @@ export default function ForecastPage({ place, engine, settings, go }) {
           tip: plan && plan.flexWhy === 'sunniest' && !isPast ? tr('Laundry & water heater: {hours}', { hours: hourRanges(plan.flexHours) }) : null,
         })]}
       />
-
-      <section className={`big-hero wx-big section ${mood}`} aria-label={tr('Weather now')}>
-        <div className="where">📍 {place.name} · {tr('Weather now')}</div>
-        <div className="big-row">
-          <span className="big-ic" aria-hidden="true">{weatherIcon(W.c.weather_code, !night)}</span>
-          <span className="big-num">{fmt(W.c.temp)}°</span>
-          <span className="big-unit">{tr(WEATHER_TEXT[W.c.weather_code]) || '—'}</span>
-        </div>
-        <div className="pills">
-          <span>
-            {tr('Feels like')} {fmt(W.c.feels ?? W.hi)}°C<Tip term="feelsLike" />
-          </span>
-          {W.todayDaily && (
-            <span>
-              {fmt(W.todayDaily.tmin)}–{fmt(W.todayDaily.tmax)}°C
-            </span>
-          )}
-          {W.todayDaily?.sunset && <span>🌇 {fmtTime(W.todayDaily.sunset, W.offsetSec)}</span>}
-        </div>
-      </section>
-      <div className="tiles tiles-3 hero-tiles">
-        <Tile icon="🌡️" tone={['bad', 'worse'].includes(W.risk.tone) ? 'loss' : 'sun'} term="heatIndex" value={fmt(W.hi)} unit="°C" label={tr('Heat index')} sub={tr(W.risk.label)} subTone={W.risk.tone} />
-        <Tile icon="💧" tone="sky" term="dewPoint" value={fmt(W.c.rh)} unit="%" label={tr('Humidity')} sub={W.dew !== null ? `${tr('Dew point')} ${fmt(W.dew)}°C` : null} />
-        <Tile icon="🔆" tone="sun" term="uv" value={fmt(W.c.uv, 1)} label={tr('UV index')} sub={tr(W.uv.label)} subTone={W.uv.tone} />
-        <Tile icon="🌬️" tone="sky" value={fmt(W.c.wind)} unit="km/h" label={tr('Wind')} sub={compass(W.c.windDir)} />
-        <Tile icon="🌧️" tone="sky" term="rainChance" value={fmt(W.rainNext24, 1)} unit="mm" label={tr('Rain next 24 h')} sub={`💧 ${Math.round(W.maxChance)}%`} />
-        <Tile icon="☁️" tone="haze" value={fmt(W.c.cloud)} unit="%" label={tr('Cloud cover')} />
-      </div>
-
-      {W.hi !== null && W.hi >= 32 && (
-        <div className="card section risk-card">
-          <h2>🥵 {tr('Heat warning')}: {tr(W.risk.label).toLowerCase()}</h2>
-          <p style={{ margin: 0, color: 'var(--ink-2)' }}>{tr(W.risk.advice)}</p>
-        </div>
-      )}
-
-      <AirNow place={place} go={go} />
 
       <section className="big-hero solar-hero section">
         <div className="where">

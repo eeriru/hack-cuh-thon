@@ -106,7 +106,7 @@ export default function AirQualityPage({ place, engine, go }) {
         </div>
       )}
       <div className="place-title">
-        <h1>{place.name}</h1>
+        <h1>{tr('Air quality')}</h1>
         <span className="sub">{place.area}</span>
         <span className="stamp">
           {iqa && iqaTs ? tr('IQAir updated {time}', { time: fmtTime(iqaTs, MY) }) : ''}
