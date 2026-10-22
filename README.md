@@ -16,7 +16,7 @@ clouds, heat and dust) that decide how much power a rooftop makes.
 |---|---|
 | **Air quality** | IQAir US AQI + official DOE API, DOE health advice, past 24 h, model forecast, a link to the best time to exercise, **haze source map** (NASA fire hotspots upwind of you), 3D haze view, today's/tomorrow's solar output |
 | **Weather & solar** | Weather now (temperature, feels-like, heat index, dew point, UV, wind, rain, cloud) and heat warnings; solar output in kWh for the picked day; a 7-day picker with weather and solar per day; next-24-hour chart; **where the solar goes** (ideal → inverter & wiring → heat → clouds & rain → haze → dust → output); hour-by-hour sunlight with/without haze; 3D view |
-| **Planner** | One-glance tiles, then the **battery & chores plan**, **EV charging planner** (cheapest hours, spare solar first), **panel cleaning reminder** (wash now or wait for rain), **best time to exercise** (stricter mode for kids/elderly/asthma) and your home settings |
+| **Planner** | One-glance tiles, then **spare solar** (how many kWh are left over after normal home use, the best hours, and which appliances fit), the **battery & chores plan**, **EV charging planner** (cheapest hours, spare solar first), **best time to exercise** (stricter mode for kids/elderly/asthma) and your home settings |
 | **Rankings** | Townships/cities by DOE API, IQAir or tomorrow's solar output; all DOE stations; **township impact board** (kWh, RM saved and CO₂ avoided if N homes in each township have solar) |
 | **How it works** | The method, which model is live, data sources, honest limits |
 
@@ -157,12 +157,12 @@ src/lib/demo.js       offline simulated haze week
 src/lib/doe.js        official DOE readings: parsing, bands, nearest station
 src/lib/weather.js    heat index, dew point, UV / rain / heat levels
 src/lib/losses.js     solar loss breakdown and dust (soiling) estimate
-src/lib/cleaning.js   panel cleaning reminder
 src/lib/outdoor.js    outdoor planner (hourly rating, best slot)
 src/lib/ev.js         EV charging planner
 src/lib/impact.js     township impact board
 src/lib/fires.js      NASA FIRMS hotspots, upwind regions
 src/lib/i18n.js       English / Bahasa Melayu switch (text in i18n-ms.js)
+src/lib/budget.js     spare solar and which appliances fit
 src/lib/forecastDays.js  per-day solar model runs and the battery plan, shared by two pages
 api/doe.js            Vercel server function that fetches the DOE feed
 api/iqair.js          Vercel server function that calls IQAir with your secret key

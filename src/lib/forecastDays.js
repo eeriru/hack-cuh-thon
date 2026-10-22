@@ -72,20 +72,6 @@ export function planForDay(day, dayHome) {
   // Same day, same household, but the sunlight the haze took away is given back.
   p.hazeCostRm = Math.max(0, p.hazeAware.costRm - planDay(pvClean, pm, dayHome).hazeAware.costRm);
   p.lossValueRm = day.loss.lossKwh * avgRate(dayHome.tariff);
+  p.pv = pv;
   return p;
-}
-
-/** Coming days in the shape the cleaning reminder needs (today first). */
-export function cleaningDays(days, today, labelFor) {
-  return days
-    .filter((x) => x.d >= today)
-    .map((x) => ({
-      d: x.d,
-      label: labelFor(x.d),
-      soilPct: x.soil.pct,
-      dryDays: x.soil.dryDays,
-      smoky: x.soil.smoky,
-      rainMm: x.wx.rain,
-      kwhBeforeDust: x.loss.kwhHaze,
-    }));
 }

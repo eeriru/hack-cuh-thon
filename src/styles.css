@@ -414,14 +414,6 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-
 .welcome-x { position: absolute; top: 10px; right: 14px; background: none; border: 0; color: var(--paper); font-size: 26px; cursor: pointer; opacity: .7; }
 .linkish { background: none; border: 0; padding: 0; color: var(--sun); font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 
-/* Panel cleaning reminder */
-.clean-head { font-family: var(--font-display); font-weight: 700; font-size: 18px; margin: 4px 0 8px; }
-.clean-gauge { min-width: 150px; text-align: right; }
-.clean-gauge .v { font-family: var(--font-display); font-weight: 800; font-size: 30px; }
-.clean-gauge .k { font-size: 12px; color: var(--ink-3); }
-.clean-gauge .bar { height: 6px; border-radius: 3px; background: var(--paper-2); margin-top: 6px; overflow: hidden; }
-.clean-gauge .bar i { display: block; height: 100%; background: linear-gradient(90deg, #c9b9a0, #8a6d3b); }
-
 /* EV planner */
 .timeline .away { background: repeating-linear-gradient(45deg, var(--paper-2), var(--paper-2) 3px, #ddd3c2 3px, #ddd3c2 6px); }
 .legend .away-swatch { background: repeating-linear-gradient(45deg, var(--paper-2), var(--paper-2) 3px, #ddd3c2 3px, #ddd3c2 6px); }
@@ -512,3 +504,36 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-
 .badge.soft { background: var(--paper-2); color: var(--ink-2); font-size: 12.5px; }
 .map-head { font-size: 15px; font-weight: 600; color: var(--ink-2); margin: 0 0 12px; }
 .card h2 small { font-family: var(--font-body); }
+
+/* EV card: plain labels */
+.ev-need { margin: 6px 0 12px; font-size: 15.5px; }
+.plan .big small { font-family: var(--font-body); font-size: 13px; font-weight: 600; color: var(--ink-3); }
+.savings .s { font-size: 12.5px; color: var(--ink-3); margin-top: 2px; }
+
+/* Solar budget */
+.budget-head { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 6px 0 14px; }
+.budget-big, .budget-when { border-radius: 14px; padding: 14px 16px; background: #fff6df; border: 1px solid #f1d394; }
+.budget-when { background: var(--paper); border-color: var(--line); }
+.budget-big .v { font-family: var(--font-display); font-weight: 800; font-size: 34px; line-height: 1; color: var(--sun-deep); }
+.budget-big .v small { font-size: 15px; }
+.budget-big.none .v { color: var(--ink-3); }
+.budget-big .k, .budget-when .k { font-weight: 700; font-size: 13.5px; margin-top: 4px; }
+.budget-when .v { font-family: var(--font-display); font-weight: 800; font-size: 26px; margin-top: 4px; }
+.budget-split .bar { display: flex; height: 14px; border-radius: 99px; overflow: hidden; background: var(--paper-2); }
+.budget-split .bar i { display: block; height: 100%; }
+.budget-hours { display: grid; grid-template-columns: repeat(24, 1fr); gap: 3px; height: 90px; margin-top: 14px; align-items: end; }
+.budget-hours > div { height: 100%; display: flex; flex-direction: column; justify-content: flex-end; position: relative; }
+.budget-hours i { display: block; background: var(--sun); border-radius: 4px 4px 0 0; min-height: 2px; margin-bottom: 16px; }
+.budget-hours span { position: absolute; bottom: 0; left: 0; font-size: 10.5px; color: var(--ink-3); white-space: nowrap; }
+.budget-picks { display: flex; flex-wrap: wrap; gap: 8px; }
+.budget-picks .pick { display: inline-flex; align-items: center; gap: 6px; background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 14px; font-weight: 600; }
+.budget-picks .pick small { color: var(--ink-3); font-weight: 500; }
+
+/* No charts: plain rows and chips */
+.waterfall .wf-row { grid-template-columns: 1fr auto; }
+.hours-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 8px; }
+.hour-chip { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 8px 6px; text-align: center; }
+.hour-chip .k { font-size: 12px; font-weight: 700; color: var(--ink-3); }
+.hour-chip .ic { font-size: 22px; margin: 2px 0; }
+.hour-chip .v { font-family: var(--font-display); font-weight: 800; font-size: 18px; }
+.hour-chip .s { font-size: 12px; color: var(--ink-3); }

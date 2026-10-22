@@ -1,5 +1,4 @@
 import { hourRanges, fmtHour } from '../lib/battery.js';
-import { SocChart } from './charts.jsx';
 import { Tip } from './Friendly.jsx';
 import { tr } from '../lib/i18n.js';
 
@@ -64,40 +63,6 @@ export default function PlanCard({ plan, home, weekend }) {
         <div>
           <div className="v" style={{ color: plan.co2SavedKg >= 0 ? 'var(--good)' : 'var(--ink-2)' }}>{Math.abs(plan.co2SavedKg).toFixed(1)} kg</div>
           <div className="k">CO₂ {plan.co2SavedKg >= 0 ? tr('avoided') : tr('added')}</div>
-        </div>
-      </div>
-      <div style={{ marginTop: 16 }}>
-        <div className="timeline" aria-label={tr('24-hour schedule')}>
-          {Array.from({ length: 24 }, (_, hr) => {
-            const peak = tou && hr >= home.tariff.peakStart && hr < home.tariff.peakEnd;
-            const flex = plan.flexHours.includes(hr);
-            const top = (plan.gridChargeKwh?.[hr] || 0) > 0;
-            return (
-              <div
-                key={hr}
-                className={`${peak ? 'peak' : ''} ${flex ? 'flex' : ''} ${top ? 'topup' : ''}`}
-                title={`${fmtHour(hr)}${flex ? ` · ${tr('run chores')}` : ''}${top ? ` · ${tr('grid top-up')}` : ''}${peak ? ` · ${tr('peak rate')}` : ''}`}
-              />
-            );
-          })}
-        </div>
-        <div className="timeline-axis">
-          {Array.from({ length: 24 }, (_, hr) => (
-            <span key={hr}>{hr % 3 === 0 ? fmtHour(hr) : ''}</span>
-          ))}
-        </div>
-        <div className="legend">
-          <span><i style={{ background: 'var(--sun)' }} />{tr('Run chores')}</span>
-          {plan.topUpKwh > 0.05 && <span><i style={{ background: 'var(--sky)' }} />{tr('Grid top-up')}</span>}
-          {tou && <span><i style={{ background: 'var(--paper-2)', boxShadow: 'inset 0 -3px 0 #c9b9a0' }} />{tr('Peak rate')}</span>}
-        </div>
-      </div>
-      <div style={{ marginTop: 16 }}>
-        <div className="small" style={{ fontWeight: 700 }}>{tr('Battery level')}</div>
-        <SocChart standard={s.soc} smart={h.soc} />
-        <div className="legend">
-          <span><i style={{ background: 'transparent', borderTop: '2px dashed var(--ink-3)', height: 0 }} />{tr('Normal day')}</span>
-          <span><i style={{ background: 'var(--sun-deep)', height: 3 }} />{tr('Smart day')}</span>
         </div>
       </div>
     </div>

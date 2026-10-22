@@ -31,66 +31,80 @@ export default function EvCard({ spareSolar, settings, setSettings, home }) {
   const s = p.standard;
   const m = p.smart;
   const hoursWith = (arr) => arr.map((k, h) => (k > 0.01 ? h : null)).filter((h) => h !== null);
+  const peak = (h) => tou && h >= home.tariff.peakStart && h < home.tariff.peakEnd;
+  const stdHours = hoursWith(s.grid.map((g, h) => g + s.solar[h]));
+  const stdPeak = stdHours.some(peak);
+  // When to set the car's timer: the first smart-charging hour after you get home.
+  const smartHours = hoursWith(m.grid.map((g, h) => g + m.solar[h]));
+  const order = Array.from({ length: 24 }, (_, i) => (ev.arriveHour + i) % 24);
+  const timerHour = ev.homeDaytime ? null : order.find((h) => smartHours.includes(h) && m.grid[h] > 0.01);
+  const noSolarWhy = m.solarKwh < 0.05 ? (ev.homeDaytime ? tr('home and battery use it all') : tr('the car is away in the daytime')) : null;
   return (
     <div className="card section" id="plan-ev">
       <div className="spread">
         <h2>
           🚗 {tr('EV charging')}
           {tip}
-          <span className="h-sub">{tr('{km} km → {kwh} kWh', { km: ev.kmPerDay, kwh: p.needKwh.toFixed(1) })}</span>
         </h2>
         <button className="chip" onClick={() => set({ enabled: false })}>{tr('Hide')}</button>
       </div>
+      <p className="ev-need">
+        🔋 {tr('Your car needs')} <b>{p.needKwh.toFixed(1)} kWh</b> {tr('a day')} <span className="muted">({tr('{km} km of driving', { km: ev.kmPerDay })})</span>
+      </p>
 
       <div className="plan-cols">
-        <div className="plan">
-          <h3>{tr('Plug in at home')}</h3>
-          <div className="big">RM {s.costRm.toFixed(2)}</div>
-          <div className="small muted">
-            {s.gridKwh.toFixed(1)} kWh {tr('grid')} · {s.co2Kg.toFixed(1)} kg CO₂
-          </div>
-          <ul className="icon-list">
-            <li>
-              <span aria-hidden="true">🔌</span>
-              {hourRanges(hoursWith(s.grid.map((g, h) => g + s.solar[h]))) || '—'}
-            </li>
-            {tou && (
-              <li className="tone-bad">
-                <span aria-hidden="true">💸</span>
-                {tr('Peak rate {from}–{to}', { from: fmtHour(home.tariff.peakStart), to: fmtHour(home.tariff.peakEnd) })}
-              </li>
-            )}
-          </ul>
-        </div>
         <div className="plan smart">
-          <h3>☀ {tr('Smart charging')}</h3>
-          <div className="big">RM {m.costRm.toFixed(2)}</div>
-          <div className="small muted">
-            {m.gridKwh.toFixed(1)} kWh {tr('grid')} · {m.solarKwh.toFixed(1)} kWh {tr('solar')}
+          <h3>✅ {tr('Best way to charge')}</h3>
+          <div className="big">
+            RM {m.costRm.toFixed(2)} <small>{tr('a day')}</small>
           </div>
           <ul className="icon-list">
             {m.solarKwh > 0.05 && (
               <li>
                 <span aria-hidden="true">☀</span>
-                {tr('Solar {hours}', { hours: hourRanges(hoursWith(m.solar)) })}
+                {tr('Free solar {hours} · {kwh} kWh', { hours: hourRanges(hoursWith(m.solar)), kwh: m.solarKwh.toFixed(1) })}
               </li>
             )}
             {m.gridKwh > 0.05 && (
               <li>
-                <span aria-hidden="true">⚡</span>
-                {tr(tou ? 'Grid {hours} (off-peak)' : 'Grid {hours}', { hours: hourRanges(hoursWith(m.grid)) })}
+                <span aria-hidden="true">🌙</span>
+                {tr(tou ? 'Grid {hours} · {kwh} kWh (cheap rate)' : 'Grid {hours} · {kwh} kWh', { hours: hourRanges(hoursWith(m.grid)), kwh: m.gridKwh.toFixed(1) })}
+              </li>
+            )}
+            {timerHour !== undefined && timerHour !== null && (
+              <li>
+                <span aria-hidden="true">⏲</span>
+                {tr("Set the car's timer to {hour}", { hour: fmtHour(timerHour) })}
               </li>
             )}
             {m.shortKwh > 0.05 && (
               <li className="tone-bad">
                 <span aria-hidden="true">⚠</span>
-                {tr('{kwh} kWh short', { kwh: m.shortKwh.toFixed(1) })}
+                {tr("Can't fully charge: {kwh} kWh short", { kwh: m.shortKwh.toFixed(1) })}
               </li>
             )}
-            {!ev.homeDaytime && (
-              <li>
-                <span aria-hidden="true">⏲</span>
-                {tr("Use the car's charging timer")}
+            {noSolarWhy && (
+              <li className="muted">
+                <span aria-hidden="true">☁</span>
+                {tr('No free solar for the car: {why}', { why: noSolarWhy })}
+              </li>
+            )}
+          </ul>
+        </div>
+        <div className="plan">
+          <h3>❌ {tr('Plugging in when you get home')}</h3>
+          <div className="big">
+            RM {s.costRm.toFixed(2)} <small>{tr('a day')}</small>
+          </div>
+          <ul className="icon-list">
+            <li>
+              <span aria-hidden="true">🔌</span>
+              {tr('Charges {hours}', { hours: hourRanges(stdHours) || '—' })}
+            </li>
+            {stdPeak && (
+              <li className="tone-bad">
+                <span aria-hidden="true">💸</span>
+                {tr('Expensive peak rate ({from}–{to})', { from: fmtHour(home.tariff.peakStart), to: fmtHour(home.tariff.peakEnd) })}
               </li>
             )}
           </ul>
@@ -99,46 +113,22 @@ export default function EvCard({ spareSolar, settings, setSettings, home }) {
       <div className="savings">
         <div>
           <div className="v">RM {p.savingRm.toFixed(2)}</div>
-          <div className="k">{tr('Saved today · ~RM {m}/month', { m: (p.savingRm * 30).toFixed(0) })}</div>
+          <div className="k">{tr('You save each day')}</div>
+          <div className="s">≈ RM {(p.savingRm * 30).toFixed(0)} {tr('a month')}</div>
         </div>
         <div>
-          <div className="v" style={{ color: p.co2SavedKg >= 0 ? 'var(--good)' : 'var(--ink-2)' }}>{Math.abs(p.co2SavedKg).toFixed(1)} kg</div>
-          <div className="k">CO₂ {p.co2SavedKg >= 0 ? tr('avoided') : tr('added')}</div>
+          <div className="v" style={{ color: 'var(--ink)' }}>RM {((m.costRm / Math.max(1, ev.kmPerDay)) * 100).toFixed(2)}</div>
+          <div className="k">{tr('Cost per 100 km')}</div>
+          <div className="s">{tr('Petrol car ≈ RM 14')}</div>
         </div>
-        <div>
-          <div className="v">RM {((m.costRm / Math.max(1, ev.kmPerDay)) * 100).toFixed(2)}</div>
-          <div className="k">{tr('per 100 km (petrol ≈ RM 14)')}</div>
-        </div>
+        {p.co2SavedKg >= 0.05 && (
+          <div>
+            <div className="v">{p.co2SavedKg.toFixed(1)} kg</div>
+            <div className="k">{tr('Less CO₂ each day')}</div>
+            <div className="s">{tr('from charging on solar')}</div>
+          </div>
+        )}
       </div>
-      <div style={{ marginTop: 14 }}>
-        <div className="timeline" aria-label={tr('24-hour EV charging schedule')}>
-          {Array.from({ length: 24 }, (_, hr) => {
-            const peak = tou && hr >= home.tariff.peakStart && hr < home.tariff.peakEnd;
-            const sun = m.solar[hr] > 0.01;
-            const grid = m.grid[hr] > 0.01;
-            const away = !p.hours.includes(hr);
-            return (
-              <div
-                key={hr}
-                className={`${peak ? 'peak' : ''} ${sun ? 'flex' : ''} ${grid ? 'topup' : ''} ${away ? 'away' : ''}`}
-                title={`${fmtHour(hr)}${sun ? ` · ${m.solar[hr].toFixed(1)} kWh ${tr('solar')}` : ''}${grid ? ` · ${m.grid[hr].toFixed(1)} kWh ${tr('grid')}` : ''}${away ? ` · ${tr('car away')}` : ''}`}
-              />
-            );
-          })}
-        </div>
-        <div className="timeline-axis">
-          {Array.from({ length: 24 }, (_, hr) => (
-            <span key={hr}>{hr % 3 === 0 ? fmtHour(hr) : ''}</span>
-          ))}
-        </div>
-        <div className="legend">
-          <span><i style={{ background: 'var(--sun)' }} />{tr('Solar charging')}</span>
-          <span><i style={{ background: 'var(--sky)' }} />{tr('Grid charging')}</span>
-          <span><i className="away-swatch" />{tr('Car away')}</span>
-          {tou && <span><i style={{ background: 'var(--paper-2)', boxShadow: 'inset 0 -3px 0 #c9b9a0' }} />{tr('Peak rate')}</span>}
-        </div>
-      </div>
-
       <details className="mini-more">
         <summary>⚙ {tr('Car settings')}</summary>
         <div className="settings" style={{ marginTop: 10 }}>

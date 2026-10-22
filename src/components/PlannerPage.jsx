@@ -4,18 +4,18 @@ import { DEFAULT_SYSTEM } from '../lib/solar.js';
 import { weatherIcon } from '../lib/weather.js';
 import { fmtHour } from '../lib/battery.js';
 import { planEv, DEFAULT_EV } from '../lib/ev.js';
-import { cleaningAdvice } from '../lib/cleaning.js';
 import { outdoorPlan } from '../lib/outdoor.js';
-import { buildDays, homeFromSettings, dayHomeFor, planForDay, avgRate, cleaningDays, isWeekend } from '../lib/forecastDays.js';
+import { buildDays, homeFromSettings, dayHomeFor, planForDay, avgRate, isWeekend } from '../lib/forecastDays.js';
 import { useAsync, Loading, DemoBanner, fmtDate } from './common.jsx';
 import PlanCard from './PlanCard.jsx';
 import EvCard from './EvCard.jsx';
-import CleaningCard, { cleaningVerdict } from './CleaningCard.jsx';
 import OutdoorCard, { useSensitive } from './OutdoorCard.jsx';
 import HomeSettings from './HomeSettings.jsx';
+import SolarBudgetCard from './SolarBudgetCard.jsx';
+import { solarBudget } from '../lib/budget.js';
 import { tr } from '../lib/i18n.js';
 
-// Planner: everything you can act on. Battery and chores, EV charging, panel cleaning
+// Planner: everything you can act on. Spare solar, battery and chores, EV charging
 // and the best time to exercise, with a one-glance summary at the top.
 export default function PlannerPage({ place, engine, settings, setSettings }) {
   const today = todayMY();
@@ -47,16 +47,22 @@ export default function PlannerPage({ place, engine, settings, setSettings }) {
   // One-glance tiles
   const ev = { ...DEFAULT_EV, ...settings.ev };
   const evPlan = ev.enabled && plan ? planEv(plan.hazeAware.exported, ev, dayHome) : null;
-  const clean = cleaningAdvice(cleaningDays(days, today, (d) => (d === today ? tr('today') : fmtDate(d, { weekday: 'long' }))), { rate: avgRate(home.tariff) });
-  const cv = clean ? cleaningVerdict(clean) : null;
+  const budget = plan ? solarBudget({ pv: plan.pv, load: plan.load.base, splitLoad: plan.load.hazeAware, exported: plan.hazeAware.exported, evSolar: evPlan?.smart.solar }) : null;
   const out = outdoorPlan(data.hours, { offsetSec: data.offsetSec, sensitive });
   const bestOut = out.best.find((b) => !b.none);
   const jump = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const tiles = [
+    budget && {
+      id: 'plan-budget',
+      icon: '☀',
+      k: tr('Spare solar'),
+      v: `${budget.surplusKwh.toFixed(1)} kWh`,
+      sub: budget.window ? `${fmtHour(budget.window.start)}–${fmtHour(budget.window.end)}` : tr('No spare solar'),
+      tone: budget.surplusKwh >= 0.5 ? 'good' : undefined,
+    },
     plan && { id: 'plan-battery', icon: '🔋', k: tr('Battery & chores'), v: `RM ${plan.savingRm.toFixed(2)}`, sub: tr('saved') },
     { id: 'plan-ev', icon: '🚗', k: tr('EV charging'), v: evPlan ? `RM ${evPlan.savingRm.toFixed(2)}` : '—', sub: evPlan ? tr('saved') : tr('Add my EV') },
-    cv && { id: 'plan-clean', icon: cv.icon, k: tr('Panels'), v: cv.short, sub: `${clean.soilPct.toFixed(1)}% ${tr('dust')}`, tone: cv.tone },
     {
       id: 'plan-outdoor',
       icon: '🏃',
@@ -96,9 +102,9 @@ export default function PlannerPage({ place, engine, settings, setSettings }) {
         ))}
       </div>
 
+      {budget && <SolarBudgetCard budget={budget} rate={rate} />}
       {plan && <PlanCard plan={plan} home={dayHome} weekend={isWeekend(current.d) && home.tariff.mode === 'tou'} />}
       {plan && <EvCard spareSolar={plan.hazeAware.exported} settings={settings} setSettings={setSettings} home={dayHome} />}
-      <CleaningCard days={cleaningDays(days, today, (d) => (d === today ? tr('today') : fmtDate(d, { weekday: 'long' })))} rate={avgRate(home.tariff)} />
       <OutdoorCard data={data} todayStr={today} sensitive={sensitive} setSensitive={setSensitive} />
       <HomeSettings settings={settings} setSettings={setSettings} />
     </>

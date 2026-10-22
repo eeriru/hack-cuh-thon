@@ -1,15 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getPlaceData, getSatelliteGhi, addDays, todayMY, localDateOf } from '../lib/api.js';
+import { getPlaceData, addDays, todayMY, localDateOf } from '../lib/api.js';
 import { computeHazeLoss } from '../lib/model.js';
 import { DEFAULT_SYSTEM } from '../lib/solar.js';
 import { hourRanges } from '../lib/battery.js';
 import { hazeLevel } from '../lib/aqi.js';
-import { SolarChart } from './charts.jsx';
 import LossBreakdown from './LossBreakdown.jsx';
 import { weatherIcon, WEATHER_TEXT, heatIndex, dewPoint, heatRisk, uvLevel, rainLevel, compass } from '../lib/weather.js';
 import HazeScene3D from './HazeScene3D.jsx';
 import AirNow from './AirNow.jsx';
-import { WeatherChart } from './charts.jsx';
 import { TOWNSHIPS } from '../lib/places.js';
 import { useAsync, Loading, DemoBanner, fmtDate, fmtTime } from './common.jsx';
 import { InShort, Tip, More } from './Friendly.jsx';
@@ -56,10 +54,6 @@ export default function ForecastPage({ place, engine, settings, go }) {
   // older date is picked. When today is picked this is the same request, so it is cached.
   const nowRange = { startDate: addDays(today, -5), endDate: addDays(today, MAX_AHEAD) };
   const nowQ = useAsync(() => getPlaceData(place, nowRange), [place.lat, place.lon, today]);
-  const sat = useAsync(
-    () => (selected <= today && data?.source === 'live' ? getSatelliteGhi(place, { startDate: selected, endDate: selected }) : Promise.resolve(new Map())),
-    [place.lat, place.lon, selected, data?.source]
-  );
 
   const system = useMemo(() => ({ ...DEFAULT_SYSTEM, kwp: settings.kwp }), [settings.kwp]);
   const home = useMemo(() => homeFromSettings(settings), [settings]);
@@ -102,17 +96,6 @@ export default function ForecastPage({ place, engine, settings, go }) {
 
   const plan = useMemo(() => (current ? planForDay(current, dayHome) : null), [current, dayHome]);
 
-  const validation = useMemo(() => {
-    const m = sat.data;
-    if (!current || !m || m.size === 0) return null;
-    const pts = current.loss.rows.filter((r) => r.clearGhi > 100 && m.has(r.t));
-    if (pts.length < 4) return null;
-    const mae = (k) => pts.reduce((s, r) => s + Math.abs(r[k] - m.get(r.t)), 0) / pts.length;
-    const actual = pts.reduce((s, r) => s + m.get(r.t), 0);
-    const withHaze = pts.reduce((s, r) => s + r.ghiHaze, 0);
-    const noHaze = pts.reduce((s, r) => s + r.ghiClean, 0);
-    return { n: pts.length, maeHaze: mae('ghiHaze'), maeClean: mae('ghiClean'), biasPct: ((withHaze - actual) / actual) * 100, noHazeBiasPct: ((noHaze - actual) / actual) * 100 };
-  }, [sat.data, current]);
 
   const wxNow = useMemo(() => {
     const nd = nowQ.data;
@@ -144,7 +127,6 @@ export default function ForecastPage({ place, engine, settings, go }) {
   const haze = hazeLevel(L.meanAod);
   const dayWord = current.d === today ? tr('today') : current.d === addDays(today, 1) ? tr('tomorrow') : tr('on {date}', { date: fmtDate(current.d) });
   const isPast = current.d < today;
-  const maxOut = Math.max(1, ...days.map((x) => x.breakdown.final));
   const avgRate = avgRateOf(dayHome.tariff);
 
   const W = wxNow;
@@ -295,7 +277,7 @@ export default function ForecastPage({ place, engine, settings, go }) {
         <span aria-hidden="true">🗓</span>
         <span>
           <b>{tr('Planner')}</b>
-          <small>🔋 {tr('Battery')} · 🚗 EV · 🧽 {tr('Panels')} · 🏃 {tr('Exercise')}</small>
+          <small>☀ {tr('Spare solar')} · 🔋 {tr('Battery')} · 🚗 EV · 🏃 {tr('Exercise')}</small>
         </span>
         <span className="go" aria-hidden="true">→</span>
       </button>
@@ -328,9 +310,6 @@ export default function ForecastPage({ place, engine, settings, go }) {
               <div className="d">
                 {d === today ? tr('Today') : fmtDate(d)} <span aria-hidden="true">{weatherIcon(wx.code)}</span>
               </div>
-              <div className="bar">
-                <i style={{ width: `${(breakdown.final / maxOut) * 100}%`, background: 'var(--sun)' }} />
-              </div>
               <div className="p">
                 {breakdown.final.toFixed(1)}
                 <small> kWh</small>
@@ -350,19 +329,17 @@ export default function ForecastPage({ place, engine, settings, go }) {
       <div className="card section">
         <h2>
           🕐 {tr('Next 24 hours')}
-          <Tip text="Temperature (solid), feels-like (dashed) and rain (bars). Hover for details." />
         </h2>
-        <WeatherChart
-          rows={W.next.map((h) => ({
-            t: h.t,
-            temp: h.temp,
-            feels: h.feels ?? heatIndex(h.temp, h.rh),
-            rain: h.rain,
-            rainChance: h.rain_chance,
-            label: fmtTime(h.t, W.offsetSec, { hour: 'numeric' }),
-            sub: fmtTime(h.t, W.offsetSec, { weekday: 'short', hour: 'numeric' }),
-          }))}
-        />
+        <div className="hours-row">
+          {W.next.filter((_, i) => i % 3 === 0).map((h) => (
+            <div key={h.t} className="hour-chip">
+              <div className="k">{fmtTime(h.t, W.offsetSec, { hour: 'numeric' })}</div>
+              <div className="ic" aria-hidden="true">{weatherIcon(h.weather_code)}</div>
+              <div className="v">{fmt(h.temp)}°</div>
+              <div className="s">💧 {fmt(h.rain, 1)}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="card section">
@@ -392,35 +369,6 @@ export default function ForecastPage({ place, engine, settings, go }) {
           signTitle={TOWNSHIPS.some((t) => t.name === place.name) ? place.name : null}
         />
       </div>
-
-      <More title="Hour-by-hour sunlight" hint="See exactly when the haze takes power, and check against satellite measurements">
-      <div className="card">
-        <SolarChart rows={L.rows} satellite={sat.data} />
-        <div className="legend">
-          <span><i style={{ background: 'transparent', borderTop: '2px dashed var(--sun-deep)', height: 0 }} />{tr('Without haze (run B)')}</span>
-          <span><i style={{ background: '#fbd98a' }} />{tr('With haze (run A)')}</span>
-          <span><i style={{ background: '#f6c3a8', boxShadow: 'inset 0 0 0 2px #e0703e' }} />{tr('Lost to haze')}</span>
-          {sat.data?.size > 0 && <span><i style={{ background: 'var(--sky)', borderRadius: 99, width: 10 }} />{tr('Measured by Himawari satellite')}</span>}
-        </div>
-        {validation && (
-          <p className="small" style={{ marginTop: 12 }}>
-            <b>{tr('Reality check:')}</b>{' '}
-            {tr(
-              'over {n} daylight hours, the haze-aware prediction was off by {mae} W/m² on average against satellite measurements, versus {mae0} W/m² if haze were ignored. Total sunlight {dir}-estimated by {bias}% (ignoring haze: {dir0} by {bias0}%). Cloud forecasts are the biggest source of error on any single day.',
-              {
-                n: validation.n,
-                mae: Math.round(validation.maeHaze),
-                mae0: Math.round(validation.maeClean),
-                dir: tr(validation.biasPct >= 0 ? 'over' : 'under'),
-                bias: Math.abs(validation.biasPct).toFixed(0),
-                dir0: tr(validation.noHazeBiasPct >= 0 ? 'over' : 'under'),
-                bias0: Math.abs(validation.noHazeBiasPct).toFixed(0),
-              }
-            )}
-          </p>
-        )}
-      </div>
-      </More>
 
       <More title="How these numbers are calculated" hint="Heat index, dew point, warnings, UV, rain and solar">
         <div className="card">

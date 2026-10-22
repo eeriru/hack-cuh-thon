@@ -103,9 +103,6 @@ export default function MethodPage({ engine }) {
           <Step title="EV charging planner">
             <P t="Daily driving × the car's energy use gives the charge needed. Solar the house and battery can't use goes to the car first; the rest comes from the grid at the cheapest hours the car is plugged in. This is compared with plugging in as soon as you get home." />
           </Step>
-          <Step title="Panel cleaning reminder">
-            <P t="Uses the same dust estimate as the loss breakdown. It compares the week's output if the panels stay dusty with washing them today, and says to wait when rain in the next two days will wash them for free." />
-          </Step>
           <Step title="Outdoor planner">
             <P t="Each coming hour is rated from the air-quality forecast (US AQI), the heat index, UV and rain, with stricter air limits for children, elderly people and asthma. The best two-hour slot of each day is shown." />
           </Step>

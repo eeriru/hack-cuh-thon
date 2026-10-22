@@ -145,7 +145,7 @@ export function Welcome({ go }) {
           <button className="linkish" onClick={() => go('forecast')}>{tr('Weather & solar')}</button> · {tr('heat, rain and your solar power')}
         </li>
         <li>
-          <button className="linkish" onClick={() => go('planner')}>{tr('Planner')}</button> · {tr('battery, EV, panel cleaning, exercise')}
+          <button className="linkish" onClick={() => go('planner')}>{tr('Planner')}</button> · {tr('spare solar, battery, EV, exercise')}
         </li>
       </ol>
       <p className="small muted">

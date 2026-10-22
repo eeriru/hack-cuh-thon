@@ -32,9 +32,6 @@ export default function LossBreakdown({ breakdown, soil }) {
           </b>
           <small>{tr('Perfect, cool panel under a clear sky')}</small>
         </div>
-        <div className="wf-track" role="cell">
-          <i style={{ left: 0, width: '100%', background: '#e7dfcc' }} />
-        </div>
         <div className="wf-val" role="cell">
           <b>{ideal.toFixed(1)} kWh</b>
           <small>100%</small>
@@ -42,8 +39,6 @@ export default function LossBreakdown({ breakdown, soil }) {
       </div>
       {rows.map((r) => {
         const gain = r.kwh < 0;
-        const left = pct(Math.min(r.from, r.to));
-        const width = Math.max(0.6, Math.abs(pct(r.kwh)));
         return (
           <div className="wf-row" role="row" key={r.key} title={tr(r.note)}>
             <div className="wf-label" role="cell">
@@ -53,9 +48,6 @@ export default function LossBreakdown({ breakdown, soil }) {
                 {TIP[r.key] && <Tip term={TIP[r.key]} />}
               </b>
               <small>{r.key === 'dust' && soil ? `${tr(soil.dryDays === 1 ? '{n} dry day since rain' : '{n} dry days since rain', { n: soil.dryDays })}${soil.assumed ? ` ${tr('(assumed)')}` : ''}` : tr(r.short || r.note)}</small>
-            </div>
-            <div className="wf-track" role="cell">
-              <i style={{ left: `${left}%`, width: `${width}%`, background: COLORS[r.key], opacity: gain ? 0.45 : 1 }} />
             </div>
             <div className="wf-val" role="cell">
               <b>
@@ -71,9 +63,6 @@ export default function LossBreakdown({ breakdown, soil }) {
         <div className="wf-label" role="cell">
           <b>{tr('Your panels make')}</b>
           <small>{tr('Forecast output for the day')}</small>
-        </div>
-        <div className="wf-track" role="cell">
-          <i style={{ left: 0, width: `${pct(final)}%`, background: 'var(--sun)' }} />
         </div>
         <div className="wf-val" role="cell">
           <b>{final.toFixed(1)} kWh</b>

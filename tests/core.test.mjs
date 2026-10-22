@@ -400,33 +400,11 @@ test('solar summary: output, value, share of home use, main cause and tip', () =
   assert.match(text, /washing machine/);
 });
 
-import { cleaningAdvice } from '../src/lib/cleaning.js';
 import { rateHour, outdoorPlan } from '../src/lib/outdoor.js';
 import { planEv, pluggedHours, DEFAULT_EV } from '../src/lib/ev.js';
 import { townshipImpact } from '../src/lib/impact.js';
 import { hazeSources, bearing, distanceKm, parseFirmsCsv, nearestRegion } from '../src/lib/fires.js';
 import { DEFAULT_HOME } from '../src/lib/battery.js';
-
-test('cleaning: dusty panels with no rain coming → wash, and washing saves money', () => {
-  const days = [0, 1, 2, 3, 4, 5, 6].map((i) => ({ d: `d${i}`, label: `Day ${i}`, soilPct: Math.min(6, 4 + 0.4 * i), rainMm: 0, kwhBeforeDust: 20 + i }));
-  const a = cleaningAdvice(days, { rate: 0.4 });
-  assert.equal(a.action, 'wash');
-  assert.ok(a.savingKwh > 3, `saving ${a.savingKwh}`);
-  assert.ok(Math.abs(a.todayLossKwh - 0.8) < 1e-9);
-  assert.equal(a.sunniestDay, 'Day 6');
-});
-
-test('cleaning: rain tomorrow → wait; clean panels → nothing to do', () => {
-  const rainy = [
-    { label: 'Today', soilPct: 4, rainMm: 0, kwhBeforeDust: 20 },
-    { label: 'Tomorrow', soilPct: 4.4, rainMm: 12, kwhBeforeDust: 12 },
-    { label: 'Fri', soilPct: 1, rainMm: 0, kwhBeforeDust: 22 },
-  ];
-  const a = cleaningAdvice(rainy);
-  assert.equal(a.action, 'wait-rain');
-  assert.equal(a.rainDay, 'Tomorrow');
-  assert.equal(cleaningAdvice([{ label: 'Today', soilPct: 1.4, rainMm: 0, kwhBeforeDust: 20 }]).action, 'clean');
-});
 
 test('outdoor: rates hours and finds the best slot', () => {
   const base = Date.UTC(2026, 9, 21, 22, 0) / 1000; // 6am local (UTC+8)
@@ -506,6 +484,27 @@ test('Bahasa Melayu toggle translates text and keeps placeholders', () => {
     const ph = (x) => (x.match(/\{\w+\}/g) || []).sort().join();
     assert.equal(ph(ms), ph(en), `placeholders differ for "${en}"`);
   }
+});
+
+
+import { solarBudget } from '../src/lib/budget.js';
+test('solar budget: spare solar, best hours and what it can run', () => {
+  const pv = Array.from({ length: 24 }, (_, h) => (h >= 8 && h <= 17 ? 3 : 0));
+  const load = new Array(24).fill(1);
+  const exported = pv.map((p, h) => (h >= 11 && h <= 14 ? 2 : 0)); // 8 kWh spare, 11am–3pm
+  const b = solarBudget({ pv, load, exported });
+  assert.equal(b.spareKwh, 8);
+  assert.equal(b.surplusKwh, 20); // 2 kWh over home use for 10 sunny hours
+  assert.deepEqual(b.window, { start: 8, end: 18, kwh: 20 });
+  assert.equal(b.madeKwh, 30);
+  assert.equal(b.homeKwh, 10);
+  assert.equal(b.batteryKwh, 12);
+  assert.ok(b.picks.some((p) => p.key === 'wash'));
+  assert.ok(b.picks.reduce((s, p) => s + p.kwh, 0) <= 20 + 1e-9);
+  const withEv = solarBudget({ pv, load, exported, evSolar: pv.map((p) => (p ? 2 : 0)) });
+  assert.equal(withEv.spareKwh, 0);
+  assert.equal(withEv.surplusKwh, 0);
+  assert.equal(withEv.picks.length, 0);
 });
 
 console.log(`\n${passed} tests passed`);

@@ -78,27 +78,6 @@ export default function OutdoorCard({ data, todayStr, sensitive, setSensitive })
         ))}
       </div>
 
-      <div className="outdoor-strip" role="list" aria-label={tr('Hour-by-hour outdoor rating')}>
-        {plan.hours.map((h) => (
-          <div
-            role="listitem"
-            key={h.t}
-            className="oh"
-            style={{ background: LEVEL[h.level].color }}
-            title={`${dayName(h.date)} ${fmtHour(h.hour)}: ${tr(LEVEL[h.level].label)}${h.reasons.length ? ` (${h.reasons.map((r) => tr(r)).join(', ')})` : ''}`}
-          >
-            <span>{h.hour % 3 === 0 ? fmtHour(h.hour) : ''}</span>
-          </div>
-        ))}
-      </div>
-      <div className="legend">
-        {Object.entries(LEVEL).map(([k, l]) => (
-          <span key={k}>
-            <i style={{ background: l.color }} />
-            {tr(l.label)}
-          </span>
-        ))}
-      </div>
     </div>
   );
 }
