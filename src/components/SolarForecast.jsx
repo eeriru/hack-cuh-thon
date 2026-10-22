@@ -12,7 +12,8 @@ const has = (v) => v !== null && v !== undefined;
 
 // The solar forecast: a strip of days, the picked day's output and its weather.
 // Used on Weather & solar and on the Planner. dateRange { min, max, onDate } adds a date box.
-export default function SolarForecast({ days, current, today, onSelect, rate, offsetSec, dateRange = null, id = 'solar' }) {
+// compact (Planner): just the solar card, no day strip or day weather; the side panel picks the day.
+export default function SolarForecast({ days, current, today, onSelect, rate, offsetSec, dateRange = null, id = 'solar', compact = false }) {
   const barRef = useRef(null);
   useEffect(() => {
     const el = barRef.current?.querySelector('.datebtn.active');
@@ -49,18 +50,20 @@ export default function SolarForecast({ days, current, today, onSelect, rate, of
           </label>
           )}
         </div>
+        {!compact && (
         <div className="day-strip datebar" role="tablist" ref={barRef}>
-          {days.map(({ d, breakdown, wx }) => (
-            <button key={d} role="tab" aria-selected={d === current.d} className={`day-pill datebtn ${d === current.d ? 'active' : ''}`} onClick={() => setSelected(d)}>
-              <small>{d === today ? tr('Today') : fmtDate(d, { weekday: 'short', day: 'numeric' })}</small>
-              <span className="dp-ic" aria-hidden="true">{weatherIcon(wx.code)}</span>
-              <b>{breakdown.final.toFixed(1)}</b>
-              <small>kWh</small>
-            </button>
-          ))}
-        </div>
+            {days.map(({ d, breakdown, wx }) => (
+              <button key={d} role="tab" aria-selected={d === current.d} className={`day-pill datebtn ${d === current.d ? 'active' : ''}`} onClick={() => setSelected(d)}>
+                <small>{d === today ? tr('Today') : fmtDate(d, { weekday: 'short', day: 'numeric' })}</small>
+                <span className="dp-ic" aria-hidden="true">{weatherIcon(wx.code)}</span>
+                <b>{breakdown.final.toFixed(1)}</b>
+                <small>kWh</small>
+              </button>
+            ))}
+          </div>
+        )}
 
-        <div className="solar-grid">
+        <div className={`solar-grid ${compact ? 'one' : ''}`}>
           <div className="scene-card scene-solar">
             <div className="scene-art" aria-hidden="true">
               <span className="scene-sun" />
@@ -116,7 +119,7 @@ export default function SolarForecast({ days, current, today, onSelect, rate, of
               </div>
             </div>
           </div>
-          {current.daily && <DayWeather daily={current.daily} offsetSec={offsetSec} label={fmtDate(current.d, { weekday: 'long', day: 'numeric', month: 'short' })} />}
+          {!compact && current.daily && <DayWeather daily={current.daily} offsetSec={offsetSec} label={fmtDate(current.d, { weekday: 'long', day: 'numeric', month: 'short' })} />}
         </div>
       </section>
   );

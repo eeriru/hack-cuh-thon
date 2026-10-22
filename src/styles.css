@@ -869,3 +869,4 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-
 .tips-list b { display: block; font-size: 14.5px; }
 .tips-list p { margin: 2px 0 0; font-size: 13.5px; color: var(--ink-2); line-height: 1.45; }
 @media (max-width: 760px) { .tips-grid { grid-template-columns: minmax(0, 1fr); } }
+.solar-grid.one { grid-template-columns: minmax(0, 1fr); }

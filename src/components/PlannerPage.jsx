@@ -73,7 +73,7 @@ export default function PlannerPage({ place, engine, settings, setSettings }) {
       <div className="dash section">
         <div className="dash-main">
           <p className="sec-lead plan-intro">{tr('The planner turns the solar forecast into a plan for your home. Pick a day from the list, then see how much free solar you will have, when to run chores and the battery, and when to charge your EV. Tap a card to jump to it.')}</p>
-          <SolarForecast id="plan-solar" days={days} current={current} today={today} onSelect={setSelected} rate={rate} offsetSec={data.offsetSec} />
+          <SolarForecast id="plan-solar" days={days} current={current} today={today} onSelect={setSelected} rate={rate} offsetSec={data.offsetSec} compact />
           <section className="plan-scenes" aria-label={tr('At a glance')}>
             {tiles.map((t) => (
               <button key={t.id} className={`scene-card plan-scene ${SCENE[t.id]}`} onClick={() => jump(t.id)}>
