@@ -870,3 +870,46 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-
 .tips-list p { margin: 2px 0 0; font-size: 13.5px; color: var(--ink-2); line-height: 1.45; }
 @media (max-width: 760px) { .tips-grid { grid-template-columns: minmax(0, 1fr); } }
 .solar-grid.one { grid-template-columns: minmax(0, 1fr); }
+
+/* ---------- Clickable feedback: hover lift, press, ripple, focus ring ---------- */
+button, a[href], summary, select, label.date-jump, .sp-days li { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled), a[href], summary, select, label.date-jump { cursor: pointer; }
+.btn, .chip, .sp-day, .sp-days li, .day-pill, .plan-scene, .side-nav a, .side-nav .nav-ic, .lang-switch button, .mode-btns button,
+.aq-bar, .mini-chip.solar, .tipbtn, .linkish, .search-results button, .more summary, .hour-chip, .scene-card, .tips-list li {
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.3, 1), box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+}
+@media (hover: hover) {
+  .btn:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 8px 18px -8px rgba(29, 36, 51, 0.45); }
+  .chip:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 6px 14px -8px rgba(29, 36, 51, 0.35); }
+  .day-pill:hover { transform: translateY(-3px); box-shadow: 0 14px 24px -14px rgba(29, 36, 51, 0.55); }
+  .sp-days li:hover { transform: translateX(3px); box-shadow: 0 8px 18px -12px rgba(29, 36, 51, 0.4); }
+  .plan-scene:hover, .scene-card:has(.aq-bar):hover, .scene-card:has(.mini-chip.solar):hover { transform: translateY(-4px); box-shadow: 0 22px 36px -22px rgba(29, 36, 51, 0.55); }
+  .side-nav a:hover .nav-ic { transform: scale(1.08); }
+  .lang-switch button:not(.active):hover { background: var(--paper-2); color: var(--ink); }
+  .mode-btns button:hover { background: var(--paper-2); }
+  .aq-bar:hover { box-shadow: 0 8px 18px -12px rgba(29, 36, 51, 0.45); }
+  .mini-chip.solar:hover { filter: brightness(1.15); }
+  .tipbtn:hover { transform: scale(1.15); }
+  .hour-chip:hover { transform: translateY(-2px); }
+  .tips-list li:hover { transform: translateX(3px); }
+  .more summary:hover { background: rgba(255, 255, 255, 0.5); }
+}
+/* Press: a small squeeze while held down */
+.btn:not(:disabled):active, .chip:not(:disabled):active, .day-pill:active, .lang-switch button:active, .mode-btns button:active,
+.aq-bar:active, .mini-chip.solar:active, .linkish:active, .search-results button:active { transform: scale(0.95); transition-duration: 0.08s; }
+.plan-scene:active, .sp-days li:active { transform: scale(0.98); transition-duration: 0.08s; }
+.side-nav a:active .nav-ic, .tipbtn:active { transform: scale(0.9); transition-duration: 0.08s; }
+/* Ripple (added by src/lib/ripple.js) */
+.has-ripple { position: relative; overflow: hidden; isolation: isolate; }
+.ripple { position: absolute; border-radius: 50%; background: currentColor; opacity: 0.22; transform: scale(0); pointer-events: none; z-index: 0; animation: ripple 0.55s ease-out forwards; }
+.btn .ripple, .day-pill.active .ripple, .side-nav a.active .ripple { background: #fff; opacity: 0.35; }
+@keyframes ripple { to { transform: scale(1); opacity: 0; } }
+/* Keyboard focus ring */
+:focus { outline: none; }
+:focus-visible { outline: 3px solid rgba(245, 165, 36, 0.75); outline-offset: 3px; border-radius: 12px; }
+.chip:focus-visible, .btn:focus-visible, .lang-switch button:focus-visible { border-radius: 999px; }
+@media (prefers-reduced-motion: reduce) {
+  .btn, .chip, .sp-day, .sp-days li, .day-pill, .plan-scene, .side-nav a, .side-nav .nav-ic, .lang-switch button, .mode-btns button,
+  .aq-bar, .mini-chip.solar, .tipbtn, .linkish, .search-results button, .more summary, .hour-chip, .scene-card, .tips-list li { transition: none; transform: none !important; }
+  .ripple { display: none; }
+}
