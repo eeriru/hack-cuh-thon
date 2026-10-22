@@ -913,3 +913,28 @@ button:not(:disabled), a[href], summary, select, label.date-jump { cursor: point
   .aq-bar, .mini-chip.solar, .tipbtn, .linkish, .search-results button, .more summary, .hour-chip, .scene-card, .tips-list li { transition: none; transform: none !important; }
   .ripple { display: none; }
 }
+
+/* Welcome card: dashboard style, one tile per page */
+.welcome { padding: 22px 24px; }
+.welcome h2 { color: var(--ink); font-size: 24px; margin: 0; }
+.welcome p { color: var(--ink-2); margin: 4px 0 0; }
+.welcome .muted { color: var(--ink-3); }
+.welcome-x { color: var(--ink-3); top: 12px; right: 16px; }
+.welcome-head { display: flex; gap: 14px; align-items: center; padding-right: 30px; }
+.welcome-badge { flex: none; width: 52px; height: 52px; border-radius: 18px; background: var(--sun-soft); display: grid; place-items: center; font-size: 26px; }
+.welcome-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 18px 0 14px; }
+.welcome-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; border: 0; border-radius: 22px; padding: 14px 16px; font: inherit; color: var(--ink); cursor: pointer; }
+.welcome-tile b { font-size: 15.5px; }
+.welcome-tile small { color: var(--ink-2); font-size: 13px; line-height: 1.4; }
+.wt-ic { width: 38px; height: 38px; border-radius: 13px; background: rgba(255, 255, 255, 0.85); display: grid; place-items: center; font-size: 19px; margin-bottom: 4px; }
+.wt-blue { background: #e2edf9; }
+.wt-sun { background: #fdecc8; }
+.wt-lime { background: #e8f3c9; }
+.wt-plain { background: var(--paper); }
+.welcome-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+@media (hover: hover) { .welcome-tile:hover { transform: translateY(-3px); box-shadow: 0 14px 24px -16px rgba(29, 36, 51, 0.5); } }
+.welcome-tile:active { transform: scale(0.97); transition-duration: 0.08s; }
+.welcome-tile { transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.3, 1), box-shadow 0.2s ease; }
+@media (max-width: 1000px) { .welcome-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .welcome-grid { grid-template-columns: minmax(0, 1fr); } .welcome-tile { flex-direction: row; flex-wrap: wrap; align-items: center; column-gap: 10px; } .welcome-tile small { flex-basis: 100%; } .wt-ic { margin: 0; } }
+@media (prefers-reduced-motion: reduce) { .welcome-tile { transition: none; transform: none !important; } }

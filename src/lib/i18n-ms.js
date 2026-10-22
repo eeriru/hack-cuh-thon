@@ -11,7 +11,6 @@ export const MS = {
   "Welcome to SuriaMF": "Selamat datang ke SuriaMF",
   "Close welcome message": "Tutup mesej alu-aluan",
   "Got it": "Faham",
-  "Your township's air, weather and solar power, explained simply.": "Udara, cuaca dan tenaga solar perbandaran anda, diterangkan dengan mudah.",
   "Tap any": "Ketik mana-mana",
   "for a plain-language explanation.": "untuk penerangan yang mudah difahami.",
   "SuriaMF — a hackathon prototype for the Township of Tomorrow. Air quality: IQAir (US AQI) and the Department of Environment (DOE) official API via MyEQMS. Weather, haze and sunlight: Open-Meteo (weather models, Copernicus CAMS, JMA/JAXA Himawari). Fire hotspots: NASA FIRMS. Solar figures are model estimates.": "SuriaMF — prototaip hackathon untuk Township of Tomorrow. Kualiti udara: IQAir (US AQI) dan IPU rasmi Jabatan Alam Sekitar (JAS) melalui MyEQMS. Cuaca, jerebu dan cahaya matahari: Open-Meteo (model cuaca, Copernicus CAMS, JMA/JAXA Himawari). Titik panas kebakaran: NASA FIRMS. Angka solar ialah anggaran model.",
@@ -27,7 +26,6 @@ export const MS = {
   "Updated {time}": "Dikemas kini {time}",
 
   // Location picker
-  "Pick your place": "Pilih tempat anda",
   "Search location": "Cari lokasi",
   "Search a city or a country": "Cari bandar atau negara",
   "Use my location": "Guna lokasi saya",
@@ -49,7 +47,6 @@ export const MS = {
   "IQAir has no cities listed for this region yet.": "IQAir belum menyenaraikan bandar untuk wilayah ini.",
   "Type a city name in {region} instead.": "Taip nama bandar di {region}.",
   "Showing major cities (IQAir directory unavailable).": "Memaparkan bandar utama (direktori IQAir tiada).",
-  "from the buttons or the search box.": "daripada butang atau kotak carian.",
 
   // Levels
   "Good": "Baik",
@@ -464,7 +461,6 @@ export const MS = {
   "comfortable and humid": "selesa dan lembap",
   "drink water": "minum air",
   "haze −{pct}%": "jerebu −{pct}%",
-  "heat, rain and your solar power": "haba, hujan dan tenaga solar anda",
   "hot": "panas",
   "hot and humid": "panas dan lembap",
   "saved": "dijimatkan",
@@ -535,8 +531,6 @@ export const MS = {
   "Lost to weather": "Hilang akibat cuaca",
   "Measuring the haze on its own": "Mengukur jerebu secara berasingan",
   "Your roof today": "Bumbung anda hari ini",
-  "is it safe to go out today?": "selamat untuk keluar hari ini?",
-  "spare solar, battery, EV": "lebihan solar, bateri, EV",
   "Add your daily driving to see a charging plan.": "Masukkan pemanduan harian anda untuk melihat pelan mengecas.",
   "Plugging in at {hour}": "Palam masuk pada {hour}",
   "Use a faster charger or leave it plugged in longer.": "Guna pengecas lebih laju atau biarkan ia dipalam lebih lama.",
@@ -601,4 +595,9 @@ export const MS = {
   "Switch off at the wall": "Matikan suis di dinding",
   "TVs, decoders and chargers still draw power on standby. Switch them off at night.": "TV, dekoder dan pengecas masih menggunakan tenaga dalam mod sedia. Matikan suisnya pada waktu malam.",
   "Spare solar is what your panels make beyond what your home uses. This shows how much you have and the best hours to use it, so you buy less power in the evening. The ideas card below suggests what to run.": "Lebihan solar ialah tenaga yang dijana panel melebihi penggunaan rumah anda. Ini menunjukkan berapa banyak yang ada dan waktu terbaik menggunakannya, supaya anda membeli kurang elektrik pada waktu petang. Kad idea di bawah mencadangkan apa yang boleh dijalankan.",
+  "Your township's air, weather and solar power in one place. Pick your place at the top, then start here:": "Udara, cuaca dan tenaga solar kawasan anda di satu tempat. Pilih lokasi anda di atas, kemudian mula di sini:",
+  "Safe to go out? IQAir and DOE readings, and where the haze comes from.": "Selamat untuk keluar? Bacaan IQAir dan JAS, serta dari mana jerebu datang.",
+  "Today's weather, the week ahead and how much power your panels will make.": "Cuaca hari ini, minggu hadapan dan berapa banyak tenaga yang akan dijana panel anda.",
+  "Spare solar, ideas for the day, battery & chores and EV charging.": "Lebihan solar, idea untuk hari ini, bateri & kerja rumah dan pengecasan EV.",
+  "How the solar model and every number are worked out.": "Bagaimana model solar dan setiap angka dikira.",
 };

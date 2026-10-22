@@ -112,6 +112,14 @@ export function More({ title, hint, children, defaultOpen = false }) {
 
 const WELCOME_KEY = 'sh-welcome-dismissed';
 /** One-time welcome card explaining what the app does, in three steps. */
+// The four pages, as tiles on the welcome card.
+const WELCOME_PAGES = [
+  { id: 'air', icon: '😷', label: 'Air quality', text: 'Safe to go out? IQAir and DOE readings, and where the haze comes from.', tone: 'wt-blue' },
+  { id: 'forecast', icon: '🌤️', label: 'Weather & solar', text: "Today's weather, the week ahead and how much power your panels will make.", tone: 'wt-sun' },
+  { id: 'planner', icon: '📅', label: 'Planner', text: 'Spare solar, ideas for the day, battery & chores and EV charging.', tone: 'wt-lime' },
+  { id: 'method', icon: 'ⓘ', label: 'How it works', text: 'How the solar model and every number are worked out.', tone: 'wt-plain' },
+];
+
 export function Welcome({ go }) {
   const [show, setShow] = useState(() => {
     try {
@@ -132,26 +140,28 @@ export function Welcome({ go }) {
   return (
     <section className="welcome section" aria-label={tr('Welcome')}>
       <button className="welcome-x" onClick={close} aria-label={tr('Close welcome message')}>×</button>
-      <h2>{tr('Welcome to SuriaMF')} 👋</h2>
-      <p>{tr("Your township's air, weather and solar power, explained simply.")}</p>
-      <ol>
-        <li>
-          <b>{tr('Pick your place')}</b> {tr('from the buttons or the search box.')}
-        </li>
-        <li>
-          <button className="linkish" onClick={() => go('air')}>{tr('Air quality')}</button> · {tr('is it safe to go out today?')}
-        </li>
-        <li>
-          <button className="linkish" onClick={() => go('forecast')}>{tr('Weather & solar')}</button> · {tr('heat, rain and your solar power')}
-        </li>
-        <li>
-          <button className="linkish" onClick={() => go('planner')}>{tr('Planner')}</button> · {tr('spare solar, battery, EV')}
-        </li>
-      </ol>
-      <p className="small muted">
-        {tr('Tap any')} <span className="tipbtn static" aria-hidden="true">i</span> {tr('for a plain-language explanation.')}
-      </p>
-      <button className="btn" onClick={close}>{tr('Got it')}</button>
+      <div className="welcome-head">
+        <span className="welcome-badge" aria-hidden="true">☀️</span>
+        <div>
+          <h2>{tr('Welcome to SuriaMF')} 👋</h2>
+          <p>{tr("Your township's air, weather and solar power in one place. Pick your place at the top, then start here:")}</p>
+        </div>
+      </div>
+      <div className="welcome-grid">
+        {WELCOME_PAGES.map((pg) => (
+          <button key={pg.id} className={`welcome-tile ${pg.tone}`} onClick={() => go(pg.id)}>
+            <span className="wt-ic" aria-hidden="true">{pg.icon}</span>
+            <b>{tr(pg.label)}</b>
+            <small>{tr(pg.text)}</small>
+          </button>
+        ))}
+      </div>
+      <div className="welcome-foot">
+        <span className="small muted">
+          {tr('Tap any')} <span className="tipbtn static" aria-hidden="true">i</span> {tr('for a plain-language explanation.')}
+        </span>
+        <button className="btn" onClick={close}>{tr('Got it')}</button>
+      </div>
     </section>
   );
 }
