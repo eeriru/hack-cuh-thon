@@ -81,9 +81,7 @@ export default function LossBreakdown({ breakdown, soil }) {
         </div>
       </div>
       <p className="small muted" style={{ margin: '4px 0 0' }}>
-        {tr('Percentages are shares of the ideal output. The haze figure in the headline ({pct}) compares with the same day without haze instead, so it is larger.', {
-          pct: hazeShare(steps, ideal, final),
-        })}
+        {tr('Haze vs a haze-free day: −{pct}', { pct: hazeShare(steps, ideal, final) })}
       </p>
     </div>
   );

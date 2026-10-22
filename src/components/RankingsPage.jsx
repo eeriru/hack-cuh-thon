@@ -108,7 +108,7 @@ export default function RankingsPage({ engine, settings, onPick }) {
       )}
       <div className="place-title">
         <h1>{tr('Rankings')}</h1>
-        <span className="sub">{tr('Compare places: air quality right now, and how much solar power each will make tomorrow')}</span>
+        <span className="sub">{tr('Air now · solar tomorrow')}</span>
       </div>
       {group !== 'stations' && rows.length > 0 && (
         <InShort
@@ -121,17 +121,15 @@ export default function RankingsPage({ engine, settings, onPick }) {
             return [
               worstAir && {
                 icon: '😷',
-                text: tr('Worst air now: {worst} (official API {api}, {level}). Cleanest: {best} ({bestApi}).', {
+                text: tr('Worst air: {worst} (API {api}) · cleanest: {best} ({bestApi})', {
                   worst: worstAir.place.name,
                   api: worstAir.api,
-                  level: tr(doeLevel(worstAir.api).label).toLowerCase(),
                   best: bestAir.place.name,
                   bestApi: bestAir.api,
                 }),
               },
-              { icon: '⚡', text: tr('Most solar tomorrow: {name}, about {kwh} kWh for a {kwp} kW system.', { name: bestSun.place.name, kwh: bestSun.output.toFixed(0), kwp: settings.kwp }) },
-              hazy.loss.lossPct >= 3 && { icon: '🌫️', text: tr('Haze hits {name} hardest tomorrow (−{pct}% solar).', { name: hazy.place.name, pct: hazy.loss.lossPct.toFixed(0) }) },
-              { icon: '👆', text: tr('Tap any row to see that place in detail.') },
+              { icon: '⚡', text: tr('Most solar tomorrow: {name} · {kwh} kWh', { name: bestSun.place.name, kwh: bestSun.output.toFixed(0) }) },
+              hazy.loss.lossPct >= 3 && { icon: '🌫️', text: tr('Haziest tomorrow: {name} (−{pct}% solar)', { name: hazy.place.name, pct: hazy.loss.lossPct.toFixed(0) }) },
             ];
           })()}
         />
@@ -237,13 +235,12 @@ export default function RankingsPage({ engine, settings, onPick }) {
               </table>
             </div>
             <p className="small muted" style={{ margin: '10px 0 0' }}>
-              {tr('DOE: latest hourly reading from the nearest official station. IQAir: nearest IQAir city')}
+              👆 {tr('Tap a row for details')}
               {iqDone < rows.length
-                ? ` (${tr('{done}/{total} loaded', { done: iqDone, total: rows.length })}${
-                    iqPausedUntil ? `, ${tr('IQAir is busy, resuming in {s} s', { s: Math.max(1, Math.ceil((iqPausedUntil - Date.now()) / 1000)) })}` : ''
-                  }; ${tr('the free plan allows 5 lookups a minute, so the rest fill in over the next few minutes')})`
+                ? ` · IQAir ${tr('{done}/{total} loaded', { done: iqDone, total: rows.length })}${
+                    iqPausedUntil ? ` · ${tr('IQAir is busy, resuming in {s} s', { s: Math.max(1, Math.ceil((iqPausedUntil - Date.now()) / 1000)) })}` : ''
+                  }`
                 : ''}
-              . {tr('Solar: weather, haze and sunlight forecast model (output after clouds, heat, haze and dust).')}
             </p>
           </div>
 
@@ -274,9 +271,8 @@ function StationsTable({ stations, onPick }) {
       <div className="spread">
         <div>
           <h2>{tr('All {n} DOE monitoring stations', { n: stations.length })}</h2>
-          <p className="lede">
-            {tr('Official Air Pollutant Index, latest hour ({time}).', { time: fmtTime(latestT, 8 * 3600, { weekday: 'short', hour: 'numeric', minute: '2-digit' }) })}{' '}
-            {tr('Source:')} <a href={DOE_SOURCE_URL} target="_blank" rel="noreferrer">DOE MyEQMS</a>.
+          <p className="small muted">
+            🕐 {fmtTime(latestT, 8 * 3600, { weekday: 'short', hour: 'numeric', minute: '2-digit' })} · <a href={DOE_SOURCE_URL} target="_blank" rel="noreferrer">DOE MyEQMS</a>
           </p>
         </div>
         <div className="chips">

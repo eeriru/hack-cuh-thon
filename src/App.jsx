@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import AirQualityPage from './components/AirQualityPage.jsx';
 import ForecastPage from './components/ForecastPage.jsx';
+import PlannerPage from './components/PlannerPage.jsx';
 import RankingsPage from './components/RankingsPage.jsx';
 import MethodPage from './components/MethodPage.jsx';
 import { LocationBar } from './components/common.jsx';
@@ -14,6 +15,7 @@ import { tr, getLang, setLang } from './lib/i18n.js';
 const TABS = [
   { id: 'air', label: 'Air quality' },
   { id: 'forecast', label: 'Weather & solar' },
+  { id: 'planner', label: 'Planner' },
   { id: 'rankings', label: 'Rankings' },
   { id: 'method', label: 'How it works' },
 ];
@@ -104,10 +106,11 @@ export default function App() {
         </div>
       </header>
       <main className="shell">
-        {(tab === 'air' || tab === 'forecast') && <LocationBar place={place} onChange={setPlace} />}
+        {(tab === 'air' || tab === 'forecast' || tab === 'planner') && <LocationBar place={place} onChange={setPlace} />}
         {(tab === 'air' || tab === 'forecast') && <Welcome go={go} />}
         {tab === 'air' && <AirQualityPage place={place} engine={engine} go={go} />}
-        {tab === 'forecast' && <ForecastPage place={place} engine={engine} settings={settings} setSettings={setSettings} go={go} />}
+        {tab === 'forecast' && <ForecastPage place={place} engine={engine} settings={settings} go={go} />}
+        {tab === 'planner' && <PlannerPage place={place} engine={engine} settings={settings} setSettings={setSettings} />}
         {tab === 'rankings' && (
           <RankingsPage
             engine={engine}

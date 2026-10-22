@@ -363,9 +363,9 @@ test('air summary: status, what to do, and forecast in plain words', () => {
     doeLevel: { key: 'usg', label: 'Unhealthy' },
     days: [{ label: 'Today', max: 170 }, { label: 'Wednesday', max: 140 }, { label: 'Thursday', max: 80 }],
   });
-  assert.match(items[0].text, /The air is unhealthy right now \(IQAir 161, official DOE reading 144\)/);
+  assert.match(items[0].text, /Air: unhealthy · IQAir 161 · DOE 144/);
   assert.match(items[1].text, /N95/);
-  assert.match(items[2].text, /improve .* by Thursday/);
+  assert.match(items[2].text, /Better by Thursday/);
   assert.equal(airSummary({ iq: null, doe: null, iqLevel: {}, doeLevel: {} }).length, 0);
 });
 
@@ -380,10 +380,10 @@ test('weather summary mentions heat, the rainy day and the best solar day', () =
     ],
   });
   const text = items.map((i) => i.text).join(' | ');
-  assert.match(text, /Hot and humid: 31°C, feels like 37°C/);
-  assert.match(text, /Heavy rain expected on Wednesday \(about 24 mm\)/);
-  assert.match(text, /UV is very high/);
-  assert.match(text, /Best solar day this week: Saturday/);
+  assert.match(text, /31°C, feels 37°C · hot and humid · drink water/);
+  assert.match(text, /Heavy rain on Wednesday · 24 mm/);
+  assert.match(text, /UV 9: sunscreen/);
+  assert.match(text, /Best solar day: Saturday · 25 kWh/);
 });
 
 test('solar summary: output, value, share of home use, main cause and tip', () => {
@@ -394,9 +394,9 @@ test('solar summary: output, value, share of home use, main cause and tip', () =
     tip: 'Tip: run the washing machine 11am–1pm.',
   });
   const text = items.map((i) => i.text).join(' | ');
-  assert.match(text, /will make about 20 kWh today — worth around RM 7, about 89% of a typical day's home use/);
-  assert.match(text, /clouds & rain take the most \(5\.7 kWh\); haze cuts 10%/);
-  assert.match(text, /best Saturday \(25 kWh\), weakest Wednesday \(12 kWh\)/);
+  assert.match(text, /20 kWh today · RM 7 · 89% of home use/);
+  assert.match(text, /Biggest loss: clouds & rain \(5\.7 kWh\) · haze −10%/);
+  assert.match(text, /Best Saturday \(25 kWh\) · worst Wednesday \(12 kWh\)/);
   assert.match(text, /washing machine/);
 });
 

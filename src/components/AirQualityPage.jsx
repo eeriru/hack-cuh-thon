@@ -11,7 +11,9 @@ import { airSummary } from '../lib/summary.js';
 import HazeScene3D from './HazeScene3D.jsx';
 import { TOWNSHIPS } from '../lib/places.js';
 import { useAsync, Loading, fmtTime } from './common.jsx';
-import OutdoorCard from './OutdoorCard.jsx';
+import { readSensitive } from './OutdoorCard.jsx';
+import { outdoorPlan } from '../lib/outdoor.js';
+import { fmtHour } from '../lib/battery.js';
 import { tr } from '../lib/i18n.js';
 import { lazy, Suspense } from 'react';
 
@@ -62,6 +64,8 @@ function AqiScale({ aqi }) {
     </div>
   );
 }
+
+const ADVICE_ICON = { 'Outdoor exercise': '🏃', Windows: '🪟', Mask: '😷', 'Air purifier': '🌀', 'Sensitive groups': '👶' };
 
 const km = (d) => (d < 1 ? '<1' : Math.round(d));
 
@@ -237,10 +241,9 @@ export default function AirQualityPage({ place, engine, go }) {
         <div className="grid grid-2 section">
           <div className="card">
             <h2>
-              {tr('IQAir and DOE side by side')}
+              ⚖ {tr('IQAir and DOE side by side')}
               <Tip term="twoScales" label="Why are the numbers different?" />
             </h2>
-            <p className="lede">{tr('Two trusted sources, two scales. Look at the colour and the word, not just the number.')}</p>
             <div className="compare">
               <div className="cmp">
                 <div className="cmp-src">IQAir · US AQI</div>
@@ -274,23 +277,18 @@ export default function AirQualityPage({ place, engine, go }) {
                 )}
               </div>
             </div>
-            <p className="small muted" style={{ margin: '12px 0 0' }}>
-              {tr(
-                "The numbers differ because IQAir uses the US scale and adds its own sensors, while the DOE uses Malaysia's official scale at one government station. The DOE figure is the one quoted in official announcements, such as school closures."
-              )}
-            </p>
           </div>
           <div className="card">
-            <h2>{tr('Health advice')}</h2>
-            {st && (
-              <p className="lede" style={{ color: 'var(--ink-2)' }}>
-                <b>{tr('DOE advice:')}</b> {tr(DOE_ADVICE[dl.key])}
-              </p>
-            )}
+            <h2>
+              🩺 {tr('Health advice')}
+              {st && <Tip label="DOE advice:" text={DOE_ADVICE[dl.key]} />}
+            </h2>
             <div className="advice">
               {(ADVICE[tipsKey] || ADVICE.good).map(([k, v]) => (
                 <div key={k}>
-                  <b>{tr(k)}</b>
+                  <b>
+                    <span aria-hidden="true">{ADVICE_ICON[k] || '•'}</span> {tr(k)}
+                  </b>
                   {tr(v)}
                 </div>
               ))}
@@ -299,7 +297,7 @@ export default function AirQualityPage({ place, engine, go }) {
         </div>
       )}
 
-      <OutdoorCard data={solarData.data} todayStr={today} />
+      <OutdoorChip data={solarData.data} today={today} go={go} />
 
       <Suspense fallback={<div className="card section">{tr('Loading the haze source map…')}</div>}>
         <HazeSourceMap place={place} windFromDeg={solarData.data?.current?.windDir ?? (w.windDir ?? null)} windKmh={solarData.data?.current?.wind ?? (w.windMs ? w.windMs * 3.6 : null)} />
@@ -312,9 +310,8 @@ export default function AirQualityPage({ place, engine, go }) {
               <h2>{tr('Past 24 hours (DOE)')}</h2>
               <span className="badge" style={{ background: dl.color, color: dl.ink }}>API {reading.api}</span>
             </div>
-            <p className="lede">
-              {tr('Official hourly API at {name}. Source:', { name: st.name })}{' '}
-              <a href={DOE_SOURCE_URL} target="_blank" rel="noreferrer">DOE MyEQMS</a>.
+            <p className="small muted">
+              {st.name} · <a href={DOE_SOURCE_URL} target="_blank" rel="noreferrer">DOE MyEQMS</a>
             </p>
             <AqiBars
               level={doeLevel}
@@ -348,11 +345,8 @@ function SolarTeaser({ solar, loading, go }) {
   const fmt = (x) => (x ? x.output.toFixed(1) : '–');
   return (
     <div className="card" style={{ background: 'var(--ink)', color: 'var(--paper)', borderColor: 'var(--ink)' }}>
-      <h2 style={{ color: 'var(--paper)' }}>☀ {tr('Solar forecast')}</h2>
-      <p className="lede" style={{ color: '#c7bfae' }}>
-        {tr('For a 5 kW rooftop system here. Uses satellite haze, cloud and sunlight data.')}
-        {solar?.source === 'demo' ? ` ${tr('Simulated (live data unreachable).')}` : ''}
-      </p>
+      <h2 style={{ color: 'var(--paper)' }}>☀ {tr('Solar forecast')} <small style={{ color: '#c7bfae', fontWeight: 500, fontSize: 13 }}>5 kW</small></h2>
+      {solar?.source === 'demo' && <p className="small" style={{ color: '#c7bfae' }}>{tr('Simulated data.')}</p>}
       <div className="headline-stats">
         <div className="hs">
           <div className="k">{tr('Today')}</div>
@@ -369,12 +363,30 @@ function SolarTeaser({ solar, loading, go }) {
           </div>
         </div>
       </div>
-      <p style={{ color: '#d8d1c2', fontSize: 13.5 }}>
-        {tr('Expected output after clouds, heat, haze and dust. See where your solar goes, the 7-day forecast and a battery plan.')}
-      </p>
       <button className="btn" style={{ background: 'var(--sun)', borderColor: 'var(--sun)', color: 'var(--ink)' }} onClick={() => go('forecast')}>
-        {tr('Open weather & solar')} →
+        {tr('Weather & solar')} →
       </button>
     </div>
+  );
+}
+
+// One line on the Air quality page: the best time to exercise today, with a link to the Planner.
+function OutdoorChip({ data, today, go }) {
+  if (!data?.hours?.length) return null;
+  const plan = outdoorPlan(data.hours, { offsetSec: data.offsetSec, sensitive: readSensitive() });
+  const best = plan.best.find((b) => !b.none);
+  return (
+    <button className="planner-link section" onClick={() => go('planner')}>
+      <span aria-hidden="true">🏃</span>
+      <span>
+        <b>
+          {best
+            ? `${tr('Best time to exercise')}: ${fmtHour(best.startHour)}–${fmtHour(best.endHour)}${best.date === today ? '' : ` (${tr('tomorrow')})`}`
+            : tr('No good time to exercise outside')}
+        </b>
+        <small>{tr('Planner')}</small>
+      </span>
+      <span className="go" aria-hidden="true">→</span>
+    </button>
   );
 }

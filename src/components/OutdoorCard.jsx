@@ -3,15 +3,36 @@ import { outdoorPlan } from '../lib/outdoor.js';
 import { fmtHour } from '../lib/battery.js';
 import { Tip } from './Friendly.jsx';
 import { tr } from '../lib/i18n.js';
+import { addDays } from '../lib/api.js';
+import { fmtDate } from './common.jsx';
 
 const KEY = 'sh-sensitive';
-const readSensitive = () => {
+export const readSensitive = () => {
   try {
     return localStorage.getItem(KEY) === '1';
   } catch {
     return false;
   }
 };
+const saveSensitive = (v) => {
+  try {
+    localStorage.setItem(KEY, v ? '1' : '0');
+  } catch {
+    /* fine */
+  }
+};
+
+/** The "sensitive person" switch, remembered in the browser. */
+export function useSensitive() {
+  const [sensitive, setSensitive] = useState(readSensitive);
+  return [
+    sensitive,
+    (v) => {
+      setSensitive(v);
+      saveSensitive(v);
+    },
+  ];
+}
 
 const LEVEL = {
   great: { label: 'Great', color: 'var(--good)' },
@@ -20,35 +41,22 @@ const LEVEL = {
 };
 
 // Outdoor planner: the best hours to jog, cycle or play sports in the next day and a half.
-export default function OutdoorCard({ data, todayStr }) {
-  const [sensitive, setSensitive] = useState(readSensitive);
+export default function OutdoorCard({ data, todayStr, sensitive, setSensitive }) {
   if (!data?.hours?.length) return null;
   const plan = outdoorPlan(data.hours, { offsetSec: data.offsetSec, sensitive });
   if (!plan.hours.length) return null;
-  const toggle = () => {
-    const v = !sensitive;
-    setSensitive(v);
-    try {
-      localStorage.setItem(KEY, v ? '1' : '0');
-    } catch {
-      /* fine */
-    }
-  };
-  const dayName = (d) => (d === todayStr ? tr('Today') : tr('Tomorrow'));
+  const dayName = (d) => (d === todayStr ? tr('Today') : d === addDays(todayStr, 1) ? tr('Tomorrow') : fmtDate(d, { weekday: 'long' }));
 
   return (
-    <div className="card section">
+    <div className="card section" id="plan-outdoor">
       <div className="spread">
-        <div>
-          <h2>
-            🏃 {tr('Outdoor planner')}
-            <Tip text="Each hour is rated for jogging, cycling or outdoor sports using the air-quality forecast (US AQI), how hot it feels (heat index), UV and rain. Night hours (10pm–5am) are left out." />
-          </h2>
-          <p className="lede" style={{ margin: 0 }}>{tr('The best time to exercise outside, from air quality, heat, UV and rain.')}</p>
-        </div>
+        <h2>
+          🏃 {tr('Best time to exercise')}
+          <Tip text="Each hour is rated for jogging, cycling or outdoor sports using the air-quality forecast (US AQI), how hot it feels (heat index), UV and rain. Night hours (10pm–5am) are left out." />
+        </h2>
         <label className="switch">
-          <input type="checkbox" checked={sensitive} onChange={toggle} />
-          <span>{tr('Child, elderly or asthma (stricter air limits)')}</span>
+          <input type="checkbox" checked={sensitive} onChange={() => setSensitive(!sensitive)} />
+          <span>{tr('Kids, elderly, asthma')}</span>
         </label>
       </div>
 
@@ -63,7 +71,7 @@ export default function OutdoorCard({ data, todayStr }) {
                 <div className="v">
                   {fmtHour(b.startHour)}–{fmtHour(b.endHour)}
                 </div>
-                <div className="small">{b.level === 'great' ? tr('Great conditions') : tr('Fine, not perfect')}</div>
+                <div className="small">{b.level === 'great' ? `✅ ${tr('Great')}` : `👍 ${tr('OK')}`}</div>
               </>
             )}
           </div>
@@ -90,7 +98,6 @@ export default function OutdoorCard({ data, todayStr }) {
             {tr(l.label)}
           </span>
         ))}
-        <span className="muted">{tr('Hover or tap an hour for the reason')}</span>
       </div>
     </div>
   );

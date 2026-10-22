@@ -38,7 +38,7 @@ export function DemoBanner({ source }) {
       <span aria-hidden="true">⚠️</span>
       <span>
         <b>{tr('Simulated data.')}</b>{' '}
-        {tr('Live data from Open-Meteo could not be reached, so you are seeing a simulated haze week. Numbers are illustrative only. Check your connection and refresh to load real readings.')}
+        {tr('Live data unreachable: showing a sample haze week. Refresh to try again.')}
       </span>
     </div>
   );

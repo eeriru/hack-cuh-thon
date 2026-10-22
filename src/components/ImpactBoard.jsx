@@ -22,8 +22,8 @@ export default function ImpactBoard({ rows, homes, setHomes, settings, rate, gro
             🏘 {tr(many ? 'Township impact board' : 'City impact board')} · {tr('tomorrow')}
             <Tip text="Tomorrow's forecast output for one home with your solar size, multiplied by the number of solar homes. Money uses your electricity rate; CO₂ uses the grid factor in your home settings. A mature tree absorbs about 22 kg of CO₂ a year; a petrol car gives off about 0.17 kg per km." />
           </h2>
-          <p className="lede" style={{ margin: 0 }}>
-            {tr(many ? 'If {homes} homes in each township have a {kwp} kW rooftop system.' : 'If {homes} homes in each city have a {kwp} kW rooftop system.', { homes: homes.toLocaleString(), kwp: settings.kwp })}
+          <p className="small muted" style={{ margin: 0 }}>
+            {tr('{homes} homes × {kwp} kW each', { homes: homes.toLocaleString(), kwp: settings.kwp })}
           </p>
         </div>
         <div className="field" style={{ width: 180 }}>
@@ -35,21 +35,21 @@ export default function ImpactBoard({ rows, homes, setHomes, settings, rate, gro
       <div className="savings" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
         <div>
           <div className="v" style={{ color: 'var(--sun-deep)' }}>{T.mwh.toFixed(1)} MWh</div>
-          <div className="k">{tr('Clean power made ({n} homes)', { n: T.homes.toLocaleString() })}</div>
+          <div className="k">⚡ {tr('Clean power')}</div>
         </div>
         <div>
           <div className="v" style={{ color: 'var(--good)' }}>RM {n0(T.rm)}</div>
-          <div className="k">{tr('Saved on electricity bills at ~RM {rate}/kWh', { rate: rate.toFixed(2) })}</div>
+          <div className="k">💰 {tr('Saved on bills')}</div>
         </div>
         <div>
           <div className="v" style={{ color: 'var(--good)' }}>{(T.co2Kg / 1000).toFixed(1)} t CO₂</div>
           <div className="k">
-            {tr('Avoided in one day · what {trees} trees absorb in a year, or {km} km not driven by car', { trees: n0(T.treeYears), km: n0(T.carKm) })}
+            🌳 {tr('CO₂ avoided ≈ {trees} trees for a year', { trees: n0(T.treeYears) })}
           </div>
         </div>
         <div>
           <div className="v" style={{ color: 'var(--loss)' }}>{T.lostMwh.toFixed(1)} MWh</div>
-          <div className="k">{tr('Lost to haze (RM {rm})', { rm: n0(T.lostRm) })}</div>
+          <div className="k">🌫 {tr('Lost to haze (RM {rm})', { rm: n0(T.lostRm) })}</div>
         </div>
       </div>
 

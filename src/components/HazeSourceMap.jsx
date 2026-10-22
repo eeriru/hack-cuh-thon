@@ -74,24 +74,22 @@ export default function HazeSourceMap({ place, windFromDeg, windKmh }) {
   const top = src.regions[0];
   let headline;
   if (fires.loading) headline = tr('Loading fire hotspots…');
-  else if (fires.data?.notConfigured) headline = tr('Fire hotspots need a free NASA FIRMS key (see the README). The wedge shows where the wind is coming from.');
+  else if (fires.data?.notConfigured) headline = tr('Fire data needs a free NASA key (see README)');
   else if (fires.data?.error) headline = tr('Fire hotspots could not be loaded right now ({err}).', { err: tr(fires.data.error) });
-  else if (!src.hasWind) headline = tr('{n} fire hotspots in the region in the last 2 days. Wind direction is not available.', { n: src.total });
+  else if (!src.hasWind) headline = tr('{n} fires in the region · no wind data', { n: src.total });
   else if (top) {
-    headline = tr('Most likely source: {n} hotspots in {region}, about {km} km to the {dir}.', {
+    headline = tr('Likely source: {region} · {n} fires · {km} km {dir}', {
       n: top.count,
       region: top.name,
       km: Math.round(top.km),
       dir: compass((windFromDeg + 360) % 360),
     });
     if (top.hours)
-      headline += ` ${
-        top.hours < 36
-          ? tr("At today's wind, smoke takes roughly {n} hours to reach you.", { n: Math.round(top.hours) })
-          : tr("At today's wind, smoke takes roughly {n} days to reach you.", { n: Math.round(top.hours / 24) })
+      headline += ` · ${
+        top.hours < 36 ? tr('smoke ~{n} h away', { n: Math.round(top.hours) }) : tr('smoke ~{n} days away', { n: Math.round(top.hours / 24) })
       }`;
   } else
-    headline = tr('No fire hotspots upwind of you right now ({n} in the region in the last 2 days). Haze today is more likely local: traffic, industry or open burning nearby.', { n: src.total });
+    headline = tr('No fires upwind ({n} in the region) · haze is likely local', { n: src.total });
 
   return (
     <div className="card section">
@@ -99,7 +97,7 @@ export default function HazeSourceMap({ place, windFromDeg, windKmh }) {
         🔥 {tr('Where is the haze coming from?')}
         <Tip text="Red and orange dots are fires spotted by NASA satellites in the last 2 days. The shaded wedge points to where the wind is blowing from: smoke from fires inside it can reach you. Wind near the ground is a rough guide; smoke also travels higher up, where the wind can differ." />
       </h2>
-      <p className="lede">{headline}</p>
+      <p className="map-head">{headline}</p>
       <div ref={el} className="haze-map" role="img" aria-label={tr('Map of fire hotspots and the upwind direction')} />
       <div className="legend">
         <span><i style={{ background: '#b3261e', borderRadius: 99, width: 10 }} />{tr('Fire upwind of you')}</span>
@@ -109,7 +107,7 @@ export default function HazeSourceMap({ place, windFromDeg, windKmh }) {
       </div>
       {src.regions.length > 1 && (
         <p className="small muted" style={{ marginBottom: 0 }}>
-          {tr('Other upwind fire areas:')} {src.regions.slice(1, 4).map((r) => `${r.name} (${r.count})`).join(', ')}.
+          {tr('Also upwind:')} {src.regions.slice(1, 4).map((r) => `${r.name} (${r.count})`).join(', ')}.
         </p>
       )}
     </div>

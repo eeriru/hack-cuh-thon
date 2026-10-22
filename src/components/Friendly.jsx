@@ -139,11 +139,13 @@ export function Welcome({ go }) {
           <b>{tr('Pick your place')}</b> {tr('from the buttons or the search box.')}
         </li>
         <li>
-          <button className="linkish" onClick={() => go('air')}>{tr('Air quality')}</button> {tr("tells you if it's safe to be outside, when to exercise, and where the haze is coming from.")}
+          <button className="linkish" onClick={() => go('air')}>{tr('Air quality')}</button> · {tr('safe to go out? where is the haze from?')}
         </li>
         <li>
-          <button className="linkish" onClick={() => go('forecast')}>{tr('Weather & solar')}</button>{' '}
-          {tr("shows heat, rain and the week ahead, plus how much power your roof will make and what's stealing it (clouds, heat, haze, dust).")}
+          <button className="linkish" onClick={() => go('forecast')}>{tr('Weather & solar')}</button> · {tr('heat, rain and your solar power')}
+        </li>
+        <li>
+          <button className="linkish" onClick={() => go('planner')}>{tr('Planner')}</button> · {tr('battery, EV, panel cleaning, exercise')}
         </li>
       </ol>
       <p className="small muted">
