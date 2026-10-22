@@ -31,7 +31,7 @@ export function Loading({ text = 'Loading live data…' }) {
   );
 }
 
-export function DemoBanner({ source }) {
+export function DemoBanner({ source, error }) {
   if (source !== 'demo') return null;
   return (
     <div className="banner" role="status">
@@ -39,6 +39,7 @@ export function DemoBanner({ source }) {
       <span>
         <b>{tr('Simulated data.')}</b>{' '}
         {tr('Live data unreachable: showing sample data. Refresh to try again.')}
+        {error && <span className="small muted"> ({error})</span>}
       </span>
     </div>
   );

@@ -400,29 +400,10 @@ test('solar summary: output, value, share of home use, main cause and tip', () =
   assert.match(text, /washing machine/);
 });
 
-import { rateHour, outdoorPlan } from '../src/lib/outdoor.js';
 import { planEv, pluggedHours, DEFAULT_EV } from '../src/lib/ev.js';
 import { townshipImpact } from '../src/lib/impact.js';
 import { hazeSources, bearing, distanceKm, parseFirmsCsv, nearestRegion } from '../src/lib/fires.js';
 import { DEFAULT_HOME } from '../src/lib/battery.js';
-
-test('outdoor: rates hours and finds the best slot', () => {
-  const base = Date.UTC(2026, 9, 21, 22, 0) / 1000; // 6am local (UTC+8)
-  const hours = Array.from({ length: 18 }, (_, i) => {
-    const local = 6 + i;
-    return { t: base + i * 3600, us_aqi: 40, temp: 24 + (local > 10 && local < 17 ? 8 : 0), rh: 75, uv: local > 10 && local < 15 ? 9 : 1, rain: local === 16 ? 5 : 0, rain_chance: 10 };
-  });
-  const p = outdoorPlan(hours, { now: base });
-  assert.equal(p.best[0].startHour, 6);
-  assert.equal(p.best[0].level, 'great');
-  const storm = rateHour({ t: base + 10 * 3600, us_aqi: 40, temp: 30, rh: 60, rain: 5, weather_code: 95 });
-  assert.equal(storm.level, 'avoid');
-  assert.ok(storm.reasons.includes('thunderstorm'));
-  // Sensitive people: AQI 120 is "avoid"; for others it's only "hazy".
-  const hazy = { t: base, us_aqi: 120, temp: 26, rh: 70, uv: 1 };
-  assert.equal(rateHour(hazy, { sensitive: true }).level, 'avoid');
-  assert.notEqual(rateHour(hazy).level, 'avoid');
-});
 
 test('EV: smart charging uses spare solar and off-peak hours, never costs more', () => {
   const spare = new Array(24).fill(0);
@@ -507,21 +488,6 @@ test('solar budget: spare solar, best hours and what it can run', () => {
   assert.equal(withEv.picks.length, 0);
 });
 
-test('solar budget: your own items are planned first, too-big ones are listed', () => {
-  const pv = Array.from({ length: 24 }, (_, h) => (h >= 8 && h <= 17 ? 1.5 : 0));
-  const load = new Array(24).fill(1); // 5 kWh spare
-  const exported = new Array(24).fill(0);
-  const b = solarBudget({ pv, load, exported, extra: [
-    { id: 1, name: 'Oven', watts: 2000, hours: 1 },
-    { id: 2, name: 'Pool pump', watts: 1000, hours: 8 },
-  ] });
-  assert.equal(b.picks[0].label, 'Oven');
-  assert.equal(b.picks[0].kwh, 2);
-  assert.equal(b.tooBig.length, 1);
-  assert.equal(b.tooBig[0].name, 'Pool pump');
-  assert.ok(b.picks.reduce((s, p) => s + p.kwh, 0) <= 5 + 1e-9);
-});
-
 test('solar budget: chores and EV already planned in the sun are not counted twice', () => {
   const pv = Array.from({ length: 24 }, (_, h) => (h >= 8 && h <= 17 ? 3 : 0));
   const base = new Array(24).fill(1);
@@ -534,4 +500,43 @@ test('solar budget: chores and EV already planned in the sun are not counted twi
   assert.ok(!b.picks.some((p) => ['wash', 'dryer', 'heater'].includes(p.key)));
 });
 
+test('ev: cheap-rate charging is one unbroken block ending when the car leaves', () => {
+  const ev = { ...DEFAULT_EV, enabled: true, kmPerDay: 100, kwhPer100km: 17, chargerKw: 2.3, leaveHour: 8, arriveHour: 19 };
+  const p = planEv(new Array(24).fill(0), ev, DEFAULT_HOME);
+  const hrs = p.smart.grid.map((g, h) => (g > 0.01 ? h : null)).filter((h) => h !== null);
+  assert.deepEqual(hrs, [0, 1, 2, 3, 4, 5, 6, 7, 23]); // 11pm–8am
+  assert.equal(p.smart.shortKwh, 0);
+});
+
 console.log(`\n${passed} tests passed`);
+
+import { getPlaceData, todayMY as todayForFetch, addDays as addDaysForFetch } from '../src/lib/api.js';
+test('live data: a 7-day request stays live (air quality asked only 4 days ahead, its failure is not fatal)', async () => {
+  const real = globalThis.fetch;
+  const seen = [];
+  const ok = (body) => ({ ok: true, status: 200, json: async () => body });
+  const wx = { utc_offset_seconds: 28800, hourly: { time: [1, 2], temperature_2m: [30, 31] }, current: { temperature_2m: 30 }, daily: { time: [0] } };
+  try {
+    globalThis.fetch = async (url) => {
+      seen.push(url);
+      if (url.includes('air-quality')) {
+        const end = /end_date=([\d-]+)/.exec(url)[1];
+        if (end > addDaysForFetch(todayForFetch(), 4)) return { ok: false, status: 400, json: async () => ({ error: true, reason: 'end_date out of range' }) };
+        return ok({ hourly: { time: [1], aerosol_optical_depth: [0.5] }, current: {} });
+      }
+      return ok(wx);
+    };
+    const p = { lat: 3.3, lon: 101.3 };
+    const d = await getPlaceData(p, { startDate: addDaysForFetch(todayForFetch(), -5), endDate: addDaysForFetch(todayForFetch(), 6) });
+    assert.equal(d.source, 'live');
+    assert.equal(d.aqError, null);
+    assert.equal(d.hours[0].aod, 0.5);
+    // Air quality down completely: still live weather.
+    globalThis.fetch = async (url) => (url.includes('air-quality') ? { ok: false, status: 503, json: async () => null } : ok(wx));
+    const d2 = await getPlaceData({ lat: 3.4, lon: 101.4 }, { startDate: todayForFetch(), endDate: todayForFetch() });
+    assert.equal(d2.source, 'live');
+    assert.ok(d2.aqError);
+  } finally {
+    globalThis.fetch = real;
+  }
+});

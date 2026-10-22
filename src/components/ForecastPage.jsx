@@ -141,7 +141,7 @@ export default function ForecastPage({ place, engine, settings, go }) {
 
   return (
     <>
-      <DemoBanner source={data.source} />
+      <DemoBanner source={data.source} error={data.error} />
       <h1 className="sr-only">{tr('Weather & solar')}</h1>
       <InShort
         title={`${tr('In short')} · ${isPast ? fmtDate(current.d, { weekday: 'long', day: 'numeric', month: 'short' }) : current.d === today ? tr('today') : current.d === addDays(today, 1) ? tr('tomorrow') : fmtDate(current.d)}`}

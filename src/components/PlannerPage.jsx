@@ -68,7 +68,7 @@ export default function PlannerPage({ place, engine, settings, setSettings }) {
 
   return (
     <>
-      <DemoBanner source={data.source} />
+      <DemoBanner source={data.source} error={data.error} />
       <h1 className="sr-only">{tr('Planner')}</h1>
       <div className="dash section">
         <div className="dash-main">

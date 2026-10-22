@@ -212,16 +212,22 @@ export async function getPlaceData(place, { startDate, endDate }) {
     start_date: startDate,
     end_date: endDate,
   };
-  try {
-    const [aq, wx] = await Promise.all([
-      getJson(`${AQ_URL}?${qs({ ...common, hourly: AQ_HOURLY.join(','), current: AQ_CURRENT.join(',') })}`),
-      getJson(`${WX_URL}?${qs({ ...common, hourly: WX_HOURLY.join(','), current: WX_CURRENT.join(','), daily: WX_DAILY.join(',') })}`),
-    ]);
-    return { source: 'live', ...normalize(aq, wx) };
-  } catch (err) {
-    console.warn('Live data unavailable, using simulated haze week:', err);
-    return { source: 'demo', error: String(err.message || err), ...makeDemoData(place, startDate, endDate) };
+  // The air-quality service only forecasts about 5 days ahead and refuses the whole request
+  // if end_date goes past its limit (counted in UTC, so late at night in Malaysia it is a day
+  // shorter). Ask it for at most 4 days ahead; the weather can still go the full 7 days.
+  const aqEnd = endDate < addDays(todayMY(), 4) ? endDate : addDays(todayMY(), 4);
+  const aqUrl = aqEnd >= startDate ? `${AQ_URL}?${qs({ ...common, end_date: aqEnd, hourly: AQ_HOURLY.join(','), current: AQ_CURRENT.join(',') })}` : null;
+  const wxUrl = `${WX_URL}?${qs({ ...common, hourly: WX_HOURLY.join(','), current: WX_CURRENT.join(','), daily: WX_DAILY.join(',') })}`;
+  const [aqRes, wxRes] = await Promise.allSettled([aqUrl ? getJson(aqUrl) : Promise.resolve(null), getJson(wxUrl)]);
+  if (wxRes.status === 'fulfilled') {
+    // Weather is what the solar model needs most. Without air-quality data the haze is
+    // treated as normal, which the pages already say for days with no haze forecast.
+    if (aqRes.status === 'rejected') console.warn('Air-quality data unavailable, using weather only:', aqRes.reason);
+    return { source: 'live', aqError: aqRes.status === 'rejected' ? String(aqRes.reason?.message || aqRes.reason) : null, ...normalize(aqRes.value ?? null, wxRes.value) };
   }
+  const err = wxRes.reason;
+  console.warn('Live data unavailable, using simulated haze week:', err);
+  return { source: 'demo', error: String(err?.message || err), ...makeDemoData(place, startDate, endDate) };
 }
 
 /** Same as getPlaceData but for many places in one request each (used by the rankings). */
