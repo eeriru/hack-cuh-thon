@@ -174,6 +174,7 @@ export default function ForecastPage({ place, engine, settings, go }) {
             <TempCurve hours={nowQ.data.hours} offsetSec={W.offsetSec} today={today} />
             <TomorrowCard day={nowDays.find((x) => x.d === addDays(today, 1))} today={today} go={go} />
           </div>
+          <NextWeather hours={W.next} offsetSec={W.offsetSec} isDayAt={isDayAt} inDash />
         </div>
         <SidePanel
           W={W}
@@ -215,7 +216,6 @@ export default function ForecastPage({ place, engine, settings, go }) {
       />
 
       <NextSolar hours={W.next} hourKwh={nowKwh} offsetSec={W.offsetSec} isDayAt={isDayAt} />
-      <NextWeather hours={W.next} offsetSec={W.offsetSec} isDayAt={isDayAt} />
 
       <div className="two-col section">
         <section className="card">
@@ -297,10 +297,10 @@ function NextSolar({ hours, hourKwh, offsetSec, isDayAt }) {
 }
 
 // Weather for each of the next 24 hours: icon, rain chance, temperature, wind and humidity.
-function NextWeather({ hours, offsetSec, isDayAt }) {
+function NextWeather({ hours, offsetSec, isDayAt, inDash = false }) {
   const has = (v) => v !== null && v !== undefined;
   return (
-    <section className="card section">
+    <section className={inDash ? 'card' : 'card section'}>
       <h2>🌤 {tr('Weather · next 24 hours')}</h2>
       <div className="aq-hours wx-hours" role="list">
         {hours.map((h, i) => (
