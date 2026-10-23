@@ -665,7 +665,7 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-
 .scene-blue { background: linear-gradient(165deg, #9fd0f5 0%, #6cb0ea 55%, #4f97dc 100%); color: #fff; }
 .scene-lime { background: linear-gradient(165deg, #e4f3b8 0%, #cfe98a 100%); }
 .scene-art { position: absolute; inset: 0; pointer-events: none; }
-.scene-card > :not(.scene-art) { position: relative; }
+.scene-card > :not(.scene-art):not(.ripple) { position: relative; }
 .scene-sun { position: absolute; right: 22%; top: 30%; width: 92px; height: 92px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ffc65c, var(--sun) 55%, #e8890e); box-shadow: 0 0 40px rgba(245, 165, 36, 0.45); }
 .scene-moon { position: absolute; right: 22%; top: 22%; width: 64px; height: 64px; border-radius: 50%; background: #f3ecd6; box-shadow: -12px 0 0 0 transparent, 0 0 30px rgba(243, 236, 214, 0.4); }
 .scene-art .cloud { position: absolute; animation: bob 9s ease-in-out infinite alternate; }
@@ -1026,3 +1026,5 @@ button:not(:disabled), a[href], summary, select, label.date-jump { cursor: point
 /* EN/BM switch in the sidebar: centred under the icons, same width as them */
 .side-foot .lang-switch { margin: 0; width: 46px; padding: 3px; gap: 2px; border-radius: 15px; align-items: stretch; }
 .side-foot .lang-switch button { padding: 6px 0; border-radius: 11px; text-align: center; }
+/* The tap ripple floats over its element and never takes up space (a card used to grow while it played) */
+.has-ripple > .ripple { position: absolute; }
