@@ -4,6 +4,7 @@ import ForecastPage from './components/ForecastPage.jsx';
 import PlannerPage from './components/PlannerPage.jsx';
 import MethodPage from './components/MethodPage.jsx';
 import SettingsPage from './components/SettingsPage.jsx';
+import HomeSetup from './components/HomeSetup.jsx';
 import { LocationBar } from './components/common.jsx';
 import { Welcome } from './components/Friendly.jsx';
 import { SkyBackground } from './components/Dashboard.jsx';
@@ -21,7 +22,8 @@ const TABS = [
   { id: 'settings', label: 'Settings', foot: true },
 ];
 
-const DEFAULT_SETTINGS = { kwp: 5, batteryKwh: DEFAULT_HOME.battery.capacityKwh, dailyKwh: DEFAULT_HOME.dailyKwh, home: DEFAULT_HOME, ev: DEFAULT_EV };
+// New users start on the flat tariff: TNB's time-of-use tariff is optional.
+const DEFAULT_SETTINGS = { kwp: 5, batteryKwh: DEFAULT_HOME.battery.capacityKwh, dailyKwh: DEFAULT_HOME.dailyKwh, home: { ...DEFAULT_HOME, tariff: { ...DEFAULT_HOME.tariff, mode: 'flat' } }, ev: DEFAULT_EV };
 
 function load(key, fallback) {
   try {
@@ -53,9 +55,14 @@ export default function App() {
   const [place, setPlace] = useState(() => load('sh-place', DEFAULT_PLACE));
   const [settings, setSettings] = useState(() => {
     const s = load('sh-settings', DEFAULT_SETTINGS);
-    return { ...DEFAULT_SETTINGS, ...s, home: { ...DEFAULT_HOME, ...s.home, tariff: { ...DEFAULT_HOME.tariff, ...s.home?.tariff }, battery: { ...DEFAULT_HOME.battery, ...s.home?.battery } }, ev: { ...DEFAULT_EV, ...s.ev } };
+    return { ...DEFAULT_SETTINGS, ...s, home: { ...DEFAULT_HOME, ...s.home, tariff: { ...DEFAULT_SETTINGS.home.tariff, ...s.home?.tariff }, battery: { ...DEFAULT_HOME.battery, ...s.home?.battery } }, ev: { ...DEFAULT_EV, ...s.ev } };
   });
   const [engine, setEngine] = useState(null);
+  const [homeSetupDone, setHomeSetupDone] = useState(() => load('sh-home-setup', false));
+  const finishHomeSetup = () => {
+    save('sh-home-setup', true);
+    setHomeSetupDone(true);
+  };
   const [lang, setLangState] = useState(getLang);
   const switchLang = (l) => {
     setLang(l);
@@ -139,6 +146,7 @@ export default function App() {
           {tab === 'planner' && <PlannerPage place={place} engine={engine} settings={settings} setSettings={setSettings} go={go} />}
           {tab === 'method' && <MethodPage engine={engine} />}
           {tab === 'settings' && <SettingsPage settings={settings} setSettings={setSettings} go={go} />}
+          {tab === 'planner' && !homeSetupDone && <HomeSetup settings={settings} setSettings={setSettings} onDone={finishHomeSetup} />}
           <footer className="footer">
             {tr(
               'SuriaMF — a hackathon prototype for the Township of Tomorrow. Air quality: IQAir (US AQI) and the Department of Environment (DOE) official API via MyEQMS. Weather, haze and sunlight: Open-Meteo (weather models, Copernicus CAMS, JMA/JAXA Himawari). Fire hotspots: NASA FIRMS. Solar figures are model estimates.'

@@ -618,4 +618,9 @@ export const MS = {
   "Time-of-use": "Masa penggunaan",
   "Peak 2pm–10pm on weekdays. Weekends are all off-peak.": "Puncak 2 ptg–10 mlm pada hari bekerja. Hujung minggu semuanya luar puncak.",
   "One price at every hour.": "Satu harga pada setiap jam.",
+  "Tell us about your home": "Ceritakan tentang rumah anda",
+  "The Planner uses these to work out your spare solar, battery and savings. Check your electricity bill for the rates.": "Perancang menggunakan butiran ini untuk mengira lebihan solar, bateri dan penjimatan anda. Semak bil elektrik anda untuk kadarnya.",
+  "You can change these any time under ⚙ Settings.": "Anda boleh menukarnya bila-bila masa di ⚙ Tetapan.",
+  "Use defaults for now": "Guna nilai asal dahulu",
+  "Save": "Simpan",
 };
