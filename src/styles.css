@@ -1038,3 +1038,6 @@ button:not(:disabled), a[href], summary, select, label.date-jump { cursor: point
   .side-panel .sp-home { display: none; }
 }
 .side-panel > .sp-home { margin-top: 14px; }
+/* Compact "Your home" button: just the name and Change */
+.sp-home { padding: 11px 16px; border-radius: 16px; }
+.sp-home > span:first-child { font-size: 18px; }

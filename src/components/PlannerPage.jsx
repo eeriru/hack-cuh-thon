@@ -8,7 +8,6 @@ import { buildDays, homeFromSettings, dayHomeFor, planForDay, avgRate, isWeekend
 import { useAsync, Loading, DemoBanner, fmtDate } from './common.jsx';
 import PlanCard from './PlanCard.jsx';
 import EvCard from './EvCard.jsx';
-import { homeSummary } from './HomeSettings.jsx';
 import SolarBudgetCard from './SolarBudgetCard.jsx';
 import TipsCard from './TipsCard.jsx';
 import SolarForecast from './SolarForecast.jsx';
@@ -70,10 +69,7 @@ export default function PlannerPage({ place, engine, settings, setSettings, go, 
   const homeButton = (
     <button className="sp-home" onClick={onEditHome}>
       <span aria-hidden="true">🏠</span>
-      <span>
-        <b>{tr('Your home')}</b>
-        <small>{homeSummary(settings)}</small>
-      </span>
+      <b>{tr('Your home')}</b>
       <span className="sp-home-go" aria-hidden="true">{tr('Change')}</span>
     </button>
   );
