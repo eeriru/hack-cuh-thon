@@ -1028,3 +1028,13 @@ button:not(:disabled), a[href], summary, select, label.date-jump { cursor: point
 .side-foot .lang-switch button { padding: 6px 0; border-radius: 11px; text-align: center; }
 /* The tap ripple floats over its element and never takes up space (a card used to grow while it played) */
 .has-ripple > .ripple { position: absolute; }
+
+/* "Your home" button: in the side panel on a computer, at the top of the Planner on a phone */
+.sp-home-go { font-size: 13px; color: var(--sun-deep); }
+.sp-home-phone { display: none; }
+@media (max-width: 760px) {
+  .sp-home-phone { display: block; }
+  .sp-home-phone .sp-home { background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); }
+  .side-panel .sp-home { display: none; }
+}
+.side-panel > .sp-home { margin-top: 14px; }

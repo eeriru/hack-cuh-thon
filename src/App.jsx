@@ -3,7 +3,6 @@ import AirQualityPage from './components/AirQualityPage.jsx';
 import ForecastPage from './components/ForecastPage.jsx';
 import PlannerPage from './components/PlannerPage.jsx';
 import MethodPage from './components/MethodPage.jsx';
-import SettingsPage from './components/SettingsPage.jsx';
 import HomeSetup from './components/HomeSetup.jsx';
 import { LocationBar } from './components/common.jsx';
 import { Welcome } from './components/Friendly.jsx';
@@ -19,7 +18,6 @@ const TABS = [
   { id: 'forecast', label: 'Weather & solar' },
   { id: 'planner', label: 'Planner' },
   { id: 'method', label: 'How it works' },
-  { id: 'settings', label: 'Settings', foot: true },
 ];
 
 // New users start on the flat tariff: TNB's time-of-use tariff is optional.
@@ -42,7 +40,7 @@ function save(key, value) {
 }
 
 // Weather and solar used to be two pages; old links and bookmarks open the combined page.
-const OLD_TABS = { weather: 'forecast', solar: 'forecast', rankings: 'air' };
+const OLD_TABS = { weather: 'forecast', solar: 'forecast', rankings: 'air', settings: 'planner' };
 
 const tabFromHash = () => {
   const raw = window.location.hash.replace('#/', '');
@@ -59,9 +57,11 @@ export default function App() {
   });
   const [engine, setEngine] = useState(null);
   const [homeSetupDone, setHomeSetupDone] = useState(() => load('sh-home-setup', false));
+  const [homeSetupOpen, setHomeSetupOpen] = useState(false);
   const finishHomeSetup = () => {
     save('sh-home-setup', true);
     setHomeSetupDone(true);
+    setHomeSetupOpen(false);
   };
   const [lang, setLangState] = useState(getLang);
   const switchLang = (l) => {
@@ -94,9 +94,8 @@ export default function App() {
     </div>
   );
 
-  // Settings sits at the bottom of the sidebar on a computer, and in the bottom bar on a phone.
-  const navLink = (t, extra = '') => (
-    <a key={t.id} href={`#/${t.id}`} className={`${tab === t.id ? 'active' : ''} ${extra}`.trim() || undefined} aria-current={tab === t.id ? 'page' : undefined} onClick={() => setTab(t.id)}>
+  const navLink = (t) => (
+    <a key={t.id} href={`#/${t.id}`} className={tab === t.id ? 'active' : undefined} aria-current={tab === t.id ? 'page' : undefined} onClick={() => setTab(t.id)}>
       <NavIcon id={t.id} />
       <span className="side-label">{tr(t.label)}</span>
     </a>
@@ -114,10 +113,9 @@ export default function App() {
             </span>
           </a>
           <div className="side-nav">
-            {TABS.map((t) => navLink(t, t.foot ? 'only-phone' : ''))}
+            {TABS.map((t) => navLink(t))}
           </div>
           <div className="side-foot">
-            <div className="side-nav">{TABS.filter((t) => t.foot).map((t) => navLink(t))}</div>
             {langSwitch}
           </div>
         </nav>
@@ -130,11 +128,11 @@ export default function App() {
               </span>
               <div>
                 <span className="hello-hi">{tr(greeting)} 👋</span>
-                <h2 className="hello-name">{tab === 'method' ? 'SuriaMF' : tab === 'settings' ? tr('Settings') : place.name}</h2>
+                <h2 className="hello-name">{tab === 'method' ? 'SuriaMF' : place.name}</h2>
               </div>
               <div className="head-lang">{langSwitch}</div>
             </div>
-            {tab !== 'method' && tab !== 'settings' && (
+            {tab !== 'method' && (
               <div className="head-search">
                 <LocationBar place={place} onChange={setPlace} />
               </div>
@@ -143,10 +141,11 @@ export default function App() {
           {(tab === 'air' || tab === 'forecast') && <Welcome go={go} />}
           {tab === 'air' && <AirQualityPage place={place} />}
           {tab === 'forecast' && <ForecastPage place={place} engine={engine} settings={settings} go={go} />}
-          {tab === 'planner' && <PlannerPage place={place} engine={engine} settings={settings} setSettings={setSettings} go={go} />}
+          {tab === 'planner' && <PlannerPage place={place} engine={engine} settings={settings} setSettings={setSettings} go={go} onEditHome={() => setHomeSetupOpen(true)} />}
           {tab === 'method' && <MethodPage engine={engine} />}
-          {tab === 'settings' && <SettingsPage settings={settings} setSettings={setSettings} go={go} />}
-          {tab === 'planner' && !homeSetupDone && <HomeSetup settings={settings} setSettings={setSettings} onDone={finishHomeSetup} />}
+          {tab === 'planner' && (!homeSetupDone || homeSetupOpen) && (
+            <HomeSetup settings={settings} setSettings={setSettings} editing={homeSetupDone} onDone={finishHomeSetup} />
+          )}
           <footer className="footer">
             {tr(
               'SuriaMF — a hackathon prototype for the Township of Tomorrow. Air quality: IQAir (US AQI) and the Department of Environment (DOE) official API via MyEQMS. Weather, haze and sunlight: Open-Meteo (weather models, Copernicus CAMS, JMA/JAXA Himawari). Fire hotspots: NASA FIRMS. Solar figures are model estimates.'
@@ -191,12 +190,6 @@ function NavIcon({ id }) {
         <g {...p}>
           <rect x="3.5" y="5" width="17" height="15" rx="3" />
           <path d="M3.5 10h17M8 3v4M16 3v4M8 14h3M8 17h6" />
-        </g>
-      )}
-      {id === 'settings' && (
-        <g {...p}>
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
         </g>
       )}
       {id === 'method' && (

@@ -4,7 +4,8 @@ import { tr } from '../lib/i18n.js';
 
 // First visit to the Planner: ask for the home details once, so the plans fit this home.
 // "Use defaults for now" keeps the example values. Both choices are remembered on this device.
-export default function HomeSetup({ settings, setSettings, onDone }) {
+// Later, the "Your home" button on the Planner opens it again to change the details.
+export default function HomeSetup({ settings, setSettings, onDone, editing = false }) {
   const [draft, setDraft] = useState(settings);
   const box = useRef(null);
 
@@ -32,14 +33,14 @@ export default function HomeSetup({ settings, setSettings, onDone }) {
         <div className="settings-head">
           <span className="welcome-badge" aria-hidden="true">🏠</span>
           <div>
-            <h2 id="setup-title" style={{ margin: 0 }}>{tr('Tell us about your home')}</h2>
+            <h2 id="setup-title" style={{ margin: 0 }}>{tr(editing ? 'Your home' : 'Tell us about your home')}</h2>
             <p className="sec-lead" style={{ margin: '2px 0 0' }}>{tr('The Planner uses these to work out your spare solar, battery and savings. Check your electricity bill for the rates.')}</p>
           </div>
         </div>
         <HomeSettings settings={draft} setSettings={setDraft} />
-        <p className="small muted setup-later">{tr('You can change these any time under ⚙ Settings.')}</p>
+        <p className="small muted setup-later">{tr('You can change these any time: tap 🏠 Your home on the Planner page.')}</p>
         <div className="setup-actions">
-          <button className="btn ghost" onClick={onDone}>{tr('Use defaults for now')}</button>
+          <button className="btn ghost" onClick={onDone}>{tr(editing ? 'Cancel' : 'Use defaults for now')}</button>
           <button className="btn setup-save" onClick={saveAndClose}>{tr('Save')}</button>
         </div>
       </div>

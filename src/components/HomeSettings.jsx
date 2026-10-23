@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { tr } from '../lib/i18n.js';
 
 // "Your home" settings used by the solar figures and every planner. Saved in the browser.
-// They live on the Settings page.
+// They are edited in the "Your home" popup on the Planner.
 export function homeSummary(settings) {
   const tariff = settings.home.tariff;
   return `${settings.kwp} kW ${tr('solar')} · ${settings.batteryKwh} kWh ${tr('battery')} · ${settings.dailyKwh} kWh/${tr('day')} · ${tr(tariff.mode === 'tou' ? 'time-of-use tariff' : 'flat tariff')}`;

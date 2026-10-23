@@ -623,4 +623,7 @@ export const MS = {
   "You can change these any time under ⚙ Settings.": "Anda boleh menukarnya bila-bila masa di ⚙ Tetapan.",
   "Use defaults for now": "Guna nilai asal dahulu",
   "Save": "Simpan",
+  "You can change these any time: tap 🏠 Your home on the Planner page.": "Anda boleh menukarnya bila-bila masa: tekan 🏠 Rumah anda di halaman Perancang.",
+  "Change": "Tukar",
+  "Cancel": "Batal",
 };

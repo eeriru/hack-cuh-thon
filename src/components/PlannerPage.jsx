@@ -21,7 +21,7 @@ import { Cloud } from './Dashboard.jsx';
 // Sky pictures for the three summary cards.
 const SCENE = { 'plan-budget': 'scene-solar', 'plan-battery': 'scene-blue', 'plan-ev': 'scene-lime' };
 
-export default function PlannerPage({ place, engine, settings, setSettings, go }) {
+export default function PlannerPage({ place, engine, settings, setSettings, go, onEditHome }) {
   const today = todayMY();
   const [selected, setSelected] = useState(today);
   useEffect(() => setSelected(today), [place.lat, place.lon, today]);
@@ -66,12 +66,25 @@ export default function PlannerPage({ place, engine, settings, setSettings, go }
     { id: 'plan-ev', icon: '🚗', k: tr('EV charging'), v: evPlan ? `RM ${evPlan.savingRm.toFixed(2)}` : '—', sub: evPlan ? tr('saved') : tr('Add my EV') },
   ].filter(Boolean);
 
+  // Opens the "Your home" popup. In the side panel on a computer, above the plan on a phone.
+  const homeButton = (
+    <button className="sp-home" onClick={onEditHome}>
+      <span aria-hidden="true">🏠</span>
+      <span>
+        <b>{tr('Your home')}</b>
+        <small>{homeSummary(settings)}</small>
+      </span>
+      <span className="sp-home-go" aria-hidden="true">{tr('Change')}</span>
+    </button>
+  );
+
   return (
     <>
       <DemoBanner source={data.source} error={data.error} />
       <h1 className="sr-only">{tr('Planner')}</h1>
       <div className="dash section">
         <div className="dash-main">
+          <div className="sp-home-phone">{homeButton}</div>
           <p className="sec-lead plan-intro">{tr('The planner turns the solar forecast into a plan for your home. Pick a day from the list, then see how much free solar you will have, when to run chores and the battery, and when to charge your EV. Tap a card to jump to it.')}</p>
           <SolarForecast id="plan-solar" days={days} current={current} today={today} onSelect={setSelected} rate={rate} offsetSec={data.offsetSec} compact />
           <section className="plan-scenes" aria-label={tr('At a glance')}>
@@ -109,6 +122,7 @@ export default function PlannerPage({ place, engine, settings, setSettings, go }
               <small style={{ fontSize: 14 }}> kWh</small>
             </span>
           </div>
+          {homeButton}
           <h3 className="sp-title">{tr('Pick a day')}</h3>
           <ul className="sp-days" role="tablist">
             {days.map((x) => (
@@ -127,14 +141,6 @@ export default function PlannerPage({ place, engine, settings, setSettings, go }
               </li>
             ))}
           </ul>
-          <button className="sp-home" onClick={() => go?.('settings')}>
-            <span aria-hidden="true">⚙</span>
-            <span>
-              <b>{tr('Your home')}</b>
-              <small>{homeSummary(settings)}</small>
-            </span>
-            <span className="sp-home-go" aria-hidden="true">→</span>
-          </button>
         </aside>
       </div>
     </>
