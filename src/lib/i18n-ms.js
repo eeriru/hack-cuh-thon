@@ -212,7 +212,6 @@ export const MS = {
   "Replay": "Main semula",
   "drag to rotate": "seret untuk memutar",
   "of normal sunlight reaches the panels": "cahaya matahari biasa sampai ke panel",
-  "3D view of terrace homes and a Sime Darby Property signboard, with haze matching the current air quality reading": "Paparan 3D rumah teres dan papan tanda Sime Darby Property, dengan jerebu mengikut bacaan kualiti udara semasa",
   "3D view of terrace homes with solar panels in {level}; panels receive about {pct}% of normal sunlight": "Paparan 3D rumah teres dengan panel solar dalam {level}; panel menerima kira-kira {pct}% cahaya matahari biasa",
 
   // Outdoor planner
@@ -278,7 +277,6 @@ export const MS = {
   "solar": "solar",
   "Solar per day": "Solar sehari",
   "Your panels make": "Panel anda menjana",
-  "of haze-free solar output (whole day)": "daripada output solar tanpa jerebu (sepanjang hari)",
   "Sunlight through the day with and without haze": "Cahaya matahari sepanjang hari dengan dan tanpa jerebu",
   "with haze": "dengan jerebu",
   "satellite": "satelit",
@@ -602,4 +600,8 @@ export const MS = {
   "{place} · US AQI estimate (Copernicus CAMS)": "{place} · anggaran US AQI (Copernicus CAMS)",
   "Now": "Kini",
   "Wind from {dir}": "Angin dari {dir}",
+  "3D view of terrace homes and a township signboard, with haze matching the current air quality reading": "Paparan 3D rumah teres dan papan tanda perbandaran, dengan jerebu sepadan dengan bacaan kualiti udara semasa",
+  "{pct}% of a haze-free day": "{pct}% daripada hari tanpa jerebu",
+  "The weather changes the picture only. The kWh uses the forecast weather.": "Cuaca hanya mengubah gambar. Nilai kWh menggunakan ramalan cuaca.",
+  "Your roof on {date}": "Bumbung anda pada {date}",
 };

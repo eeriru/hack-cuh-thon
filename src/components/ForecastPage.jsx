@@ -247,13 +247,14 @@ export default function ForecastPage({ place, engine, settings, go }) {
         </section>
         <section className="card">
           <h2>
-            🏠 {tr('Your roof today')}
+            🏠 {current.d === today ? tr('Your roof today') : tr('Your roof on {date}', { date: fmtDate(current.d, { weekday: 'short', day: 'numeric', month: 'short' }) })}
             <Tip text="Drag to look around. Try different weather and haze levels to see how they dim the panels." />
           </h2>
           <HazeScene3D
             aod={L.meanAod}
             shareForAod={shareForAod}
             weatherCode={current.wx.code}
+            kwh={B.final}
             label={`${fmtDate(current.d)} · ${place.name}`}
             signTitle={TOWNSHIPS.some((t) => t.name === place.name) ? place.name : null}
           />

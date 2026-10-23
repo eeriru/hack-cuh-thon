@@ -954,3 +954,18 @@ button:not(:disabled), a[href], summary, select, label.date-jump { cursor: point
 .ah-arrow { display: inline-block; color: var(--ink-3); font-size: 13px; margin-bottom: 2px; }
 .ah-rh { font-size: 13.5px; font-weight: 700; display: flex; flex-direction: column; align-items: center; }
 .ah-rh span { font-size: 14px; }
+
+/* 3D roof: dashboard style */
+.scene3d-stage { border: 0; border-radius: 24px; background: linear-gradient(180deg, #d7e8f7, #eef4f8); box-shadow: inset 0 0 0 1px rgba(29, 36, 51, 0.04); }
+.scene3d-readout { border: 0; border-radius: 18px; background: rgba(255, 255, 255, 0.92); box-shadow: 0 12px 26px -16px rgba(29, 36, 51, 0.5); backdrop-filter: blur(6px); }
+.scene3d-readout .v { color: var(--ink); }
+.scene3d-wx { border-radius: 999px; box-shadow: 0 6px 14px -10px rgba(29, 36, 51, 0.5); }
+.scene3d-controls { margin-top: 14px; background: var(--paper); border-radius: 22px; padding: 14px 16px; }
+.scene3d-controls label { margin-bottom: 6px; }
+.scene3d-wxpick { margin-top: 12px; }
+.scene3d-wxpick .chip { background: #fff; border-color: transparent; }
+.scene3d-wxpick .chip.active { background: var(--ink); color: #fff; }
+.scene3d-slider .chip { background: #fff; border-color: transparent; }
+.scene3d-note { margin: 10px 0 0; }
+.scene3d-slider .chip { white-space: nowrap; }
+@media (max-width: 600px) { .scene3d-slider { flex-wrap: wrap; } .scene3d-slider input { flex: 1 1 140px; } .scene3d-slider .chip { margin-left: auto; } }

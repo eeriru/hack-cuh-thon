@@ -178,13 +178,16 @@ export default function HazeScene3D({
   shareForAod = null,
   // Optional: today's weather code (Open-Meteo / WMO); the scene shows that weather.
   weatherCode = null,
+  // Optional: the day's forecast output (kWh). With shareForAod, the readout shows kWh
+  // and follows the haze slider.
+  kwh = null,
 }) {
   const airMode = aqi !== null || doeApi !== null;
   const aodToday = airMode ? 0.2 + 1.8 * hazeFromIndex(aqi ?? doeApi) : aodIn;
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
   const signRef = useRef(null);
-  signRef.current = ['SIME DARBY PROPERTY', signTitle || 'Township of Tomorrow'];
+  signRef.current = ['SURIAMF', signTitle || 'Township of Tomorrow'];
   const [aod, setAod] = useState(aodToday);
   const view = useRef({ yaw: -0.45, pitch: 0.42, dragging: false, lastX: 0, lastY: 0, userMoved: false });
   const faces = useMemo(buildScene, []);
@@ -199,6 +202,10 @@ export default function HazeScene3D({
   const drops = useMemo(() => makeParticles(700, 13), []);
 
   const share = shareForAod ? Math.max(0, Math.min(1, shareForAod(aod))) : sunShare(aod);
+  const shareToday = shareForAod ? Math.max(0, Math.min(1, shareForAod(aodToday))) : null;
+  // Output at the slider's haze level: the day's forecast scaled by how much more or less
+  // sunlight gets through than at today's haze.
+  const kwhNow = kwh !== null && shareToday > 0 ? (kwh * share) / shareToday : null;
   const haze = Math.min(1, Math.max(0, (aod - 0.2) / 1.8));
   const level = hazeLevel(aod);
 
@@ -472,7 +479,7 @@ export default function HazeScene3D({
           aria-label={
             `${tr(look.label)}. ` +
             (airMode
-              ? tr('3D view of terrace homes and a Sime Darby Property signboard, with haze matching the current air quality reading')
+              ? tr('3D view of terrace homes and a township signboard, with haze matching the current air quality reading')
               : tr('3D view of terrace homes with solar panels in {level}; panels receive about {pct}% of normal sunlight', { level: tr(level.label).toLowerCase(), pct: Math.round(share * 100) }))
           }
           onPointerDown={onDown}
@@ -504,12 +511,22 @@ export default function HazeScene3D({
         ) : (
           <div className="scene3d-readout">
             <div className="k">{label || tr('Your roof today')}</div>
-            <div className="v">
-              {Math.round(share * 100)}%
-              <small> {shareForAod ? tr('of haze-free solar output (whole day)') : tr('of normal sunlight reaches the panels')}</small>
-            </div>
+            {kwhNow !== null ? (
+              <>
+                <div className="v">
+                  {kwhNow.toFixed(1)}
+                  <small> kWh</small>
+                </div>
+                <div className="k">{tr('{pct}% of a haze-free day', { pct: Math.round(share * 100) })}</div>
+              </>
+            ) : (
+              <div className="v">
+                {Math.round(share * 100)}%
+                <small> {tr('of normal sunlight reaches the panels')}</small>
+              </div>
+            )}
             <div className="k">
-              {tr(level.label)} · AOD {aod.toFixed(2)}
+              🌫 {tr(level.label)} · AOD {aod.toFixed(2)}
             </div>
           </div>
         )}
@@ -549,6 +566,7 @@ export default function HazeScene3D({
               </button>
             ))}
           </div>
+          {wx !== wxToday && <p className="small muted scene3d-note">{tr('The weather changes the picture only. The kWh uses the forecast weather.')}</p>}
         </div>
       )}
     </div>
