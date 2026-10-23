@@ -265,7 +265,6 @@ export const MS = {
   "Heat cramps and exhaustion possible. Take breaks in shade, drink often.": "Kekejangan dan keletihan haba mungkin berlaku. Berehat di tempat teduh, kerap minum.",
   "Heat exhaustion likely, heatstroke possible. Avoid strenuous outdoor work at midday.": "Keletihan haba mungkin berlaku, strok haba boleh terjadi. Elakkan kerja berat di luar pada tengah hari.",
   "Heatstroke highly likely. Stay indoors and cool.": "Strok haba sangat mungkin. Kekal di dalam dan sejuk.",
-  "Next 24 hours": "24 jam akan datang",
   "Temperature and rain for the next hours": "Suhu dan hujan untuk beberapa jam akan datang",
   "Heat index, dew point, warnings, UV, rain and solar": "Indeks haba, takat embun, amaran, UV, hujan dan solar",
   "daily totals (light <10 mm, heavy ≥30 mm).": "jumlah harian (ringan <10 mm, lebat ≥30 mm).",
@@ -604,4 +603,9 @@ export const MS = {
   "{pct}% of a haze-free day": "{pct}% daripada hari tanpa jerebu",
   "The weather changes the picture only. The kWh uses the forecast weather.": "Cuaca hanya mengubah gambar. Nilai kWh menggunakan ramalan cuaca.",
   "Your roof on {date}": "Bumbung anda pada {date}",
+  "Solar output · next 24 hours": "Hasil solar · 24 jam akan datang",
+  "{kwh} kWh in total": "{kwh} kWh kesemuanya",
+  "No sun in the next 24 hours.": "Tiada matahari dalam 24 jam akan datang.",
+  "kWh your panels make in each hour, after weather and haze.": "kWh yang dijana panel anda setiap jam, selepas cuaca dan jerebu.",
+  "Weather · next 24 hours": "Cuaca · 24 jam akan datang",
 };

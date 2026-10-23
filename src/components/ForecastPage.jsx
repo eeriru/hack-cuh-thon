@@ -4,7 +4,7 @@ import { computeHazeLoss } from '../lib/model.js';
 import { DEFAULT_SYSTEM } from '../lib/solar.js';
 import { hourRanges } from '../lib/battery.js';
 import LossBreakdown from './LossBreakdown.jsx';
-import { weatherIcon, heatIndex, dewPoint, heatRisk, uvLevel } from '../lib/weather.js';
+import { weatherIcon, heatIndex, dewPoint, heatRisk, uvLevel, compass } from '../lib/weather.js';
 import HazeScene3D from './HazeScene3D.jsx';
 import { WeatherCard, AirCard, TempCurve, TomorrowCard, SidePanel } from './Dashboard.jsx';
 import SolarForecast from './SolarForecast.jsx';
@@ -18,7 +18,6 @@ import { tr } from '../lib/i18n.js';
 const MAX_PAST = 85;
 const MAX_AHEAD = 6; // a 7-day forecast (today + 6)
 
-const fmt = (v, d = 0) => (v === null || v === undefined || Number.isNaN(v) ? '–' : v.toFixed(d));
 
 // One page for the weather and the solar forecast: weather right now, then the
 // selected day's solar output, the day picker, and the details below.
@@ -110,7 +109,7 @@ export default function ForecastPage({ place, engine, settings, go }) {
   const L = current.loss;
   const B = current.breakdown;
   // Solar per hour (kWh, hour ending at t) for the hour tiles.
-  const hourKwh = new Map(days.flatMap((x) => x.loss.rows.map((r) => [r.t, r.kwhHaze * (1 - x.soil.pct / 100)])));
+  const nowKwh = new Map(nowDays.flatMap((x) => x.loss.rows.map((r) => [r.t, r.kwhHaze * (1 - x.soil.pct / 100)])));
   const isDayAt = (t) => {
     const hr = new Date((t + W.offsetSec) * 1000).getUTCHours();
     return hr >= 7 && hr < 19;
@@ -215,20 +214,8 @@ export default function ForecastPage({ place, engine, settings, go }) {
         dateRange={{ min: addDays(today, -MAX_PAST), max: addDays(today, MAX_AHEAD), onDate: (d) => { setAnchor(d); setSelected(d); } }}
       />
 
-      <section className="card section">
-        <h2>🕐 {tr('Next 24 hours')}</h2>
-        <div className="hours-row">
-          {W.next.filter((_, i) => i % 3 === 0).map((h) => (
-            <div key={h.t} className="hour-chip">
-              <div className="k">{fmtTime(h.t, W.offsetSec, { hour: 'numeric' })}</div>
-              <div className="ic" aria-hidden="true">{weatherIcon(h.weather_code, isDayAt(h.t))}</div>
-              <div className="v">{fmt(h.temp)}°</div>
-              <div className="kwh">{hourKwh.get(h.t + 3600) >= 0.05 ? `${hourKwh.get(h.t + 3600).toFixed(1)} kWh` : '—'}</div>
-              <div className="s">💧 {fmt(h.rain, 1)}</div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <NextSolar hours={W.next} hourKwh={nowKwh} offsetSec={W.offsetSec} isDayAt={isDayAt} />
+      <NextWeather hours={W.next} offsetSec={W.offsetSec} isDayAt={isDayAt} />
 
       <div className="two-col section">
         <section className="card">
@@ -273,5 +260,75 @@ export default function ForecastPage({ place, engine, settings, go }) {
         </div>
       </More>
     </>
+  );
+}
+
+// Solar output hour by hour for the next 24 hours (daylight hours only), with a bar per hour.
+// hourKwh is keyed by the hour's end time, as the solar model reports it.
+function NextSolar({ hours, hourKwh, offsetSec, isDayAt }) {
+  const rows = hours.map((h) => ({ h, kwh: hourKwh.get(h.t + 3600) ?? 0 })).filter((r) => r.kwh >= 0.05);
+  const total = rows.reduce((t, r) => t + r.kwh, 0);
+  const max = Math.max(0.1, ...rows.map((r) => r.kwh));
+  return (
+    <section className="card section">
+      <div className="spread">
+        <h2>☀ {tr('Solar output · next 24 hours')}</h2>
+        {rows.length > 0 && <span className="badge soft">{tr('{kwh} kWh in total', { kwh: total.toFixed(1) })}</span>}
+      </div>
+      {rows.length ? (
+        <div className="solar-hours" role="list">
+          {rows.map(({ h, kwh }) => (
+            <div key={h.t} className="sh-col" role="listitem">
+              <b className="sh-v">{kwh.toFixed(1)}</b>
+              <div className="sh-bar">
+                <span style={{ height: `${Math.max(6, (kwh / max) * 100)}%` }} />
+              </div>
+              <span className="sh-ic" aria-hidden="true">{weatherIcon(h.weather_code, isDayAt(h.t))}</span>
+              <small>{fmtTime(h.t, offsetSec, { hour: 'numeric' })}</small>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="small muted">{tr('No sun in the next 24 hours.')}</p>
+      )}
+      <p className="small muted" style={{ margin: '8px 0 0' }}>{tr('kWh your panels make in each hour, after weather and haze.')}</p>
+    </section>
+  );
+}
+
+// Weather for each of the next 24 hours: icon, rain chance, temperature, wind and humidity.
+function NextWeather({ hours, offsetSec, isDayAt }) {
+  const has = (v) => v !== null && v !== undefined;
+  return (
+    <section className="card section">
+      <h2>🌤 {tr('Weather · next 24 hours')}</h2>
+      <div className="aq-hours wx-hours" role="list">
+        {hours.map((h, i) => (
+          <div key={h.t} className="aq-hour" role="listitem">
+            <div className="ah-time">{i === 0 ? tr('Now') : fmtTime(h.t, offsetSec, { hour: 'numeric' })}</div>
+            <div className="ah-ic" aria-hidden="true">{weatherIcon(h.weather_code, isDayAt(h.t))}</div>
+            <div className="ah-rain">{has(h.rain_chance) && h.rain_chance >= 20 ? `${Math.round(h.rain_chance)}%` : ''}</div>
+            {has(h.temp) && <div className="ah-temp">{Math.round(h.temp)}°</div>}
+            {has(h.wind) && (
+              <div className="ah-wind">
+                {has(h.windDir) && (
+                  <span className="ah-arrow" style={{ transform: `rotate(${h.windDir}deg)` }} aria-label={tr('Wind from {dir}', { dir: compass(h.windDir) })}>
+                    ▼
+                  </span>
+                )}
+                <b>{Math.round(h.wind)}</b>
+                <small>km/h</small>
+              </div>
+            )}
+            {has(h.rh) && (
+              <div className="ah-rh">
+                <span aria-hidden="true">💧</span>
+                {Math.round(h.rh)}%
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
