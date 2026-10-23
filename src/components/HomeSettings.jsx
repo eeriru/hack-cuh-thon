@@ -1,40 +1,38 @@
 import { useState } from 'react';
-import { More } from './Friendly.jsx';
 import { tr } from '../lib/i18n.js';
 
 // "Your home" settings used by the solar figures and every planner. Saved in the browser.
-export default function HomeSettings({ settings, setSettings, defaultOpen = false }) {
+// They live on the Settings page.
+export function homeSummary(settings) {
+  const tariff = settings.home.tariff;
+  return `${settings.kwp} kW ${tr('solar')} · ${settings.batteryKwh} kWh ${tr('battery')} · ${settings.dailyKwh} kWh/${tr('day')} · ${tr(tariff.mode === 'tou' ? 'time-of-use tariff' : 'flat tariff')}`;
+}
+
+export default function HomeSettings({ settings, setSettings }) {
   const tariff = settings.home.tariff;
   const setTariff = (patch) => setSettings({ ...settings, home: { ...settings.home, tariff: { ...tariff, ...patch } } });
   return (
-    <More
-      title="⚙ Your home"
-      hint={`${settings.kwp} kW ${tr('solar')} · ${settings.batteryKwh} kWh ${tr('battery')} · ${settings.dailyKwh} kWh/${tr('day')} · ${tr(tariff.mode === 'tou' ? 'time-of-use tariff' : 'flat tariff')}`}
-      defaultOpen={defaultOpen}
-    >
-      <div className="card">
-        <div className="settings">
-          <NumField label="Solar size" unit="kWp" value={settings.kwp} min={1} max={20} step={0.5} onChange={(v) => setSettings({ ...settings, kwp: v })} />
-          <NumField label="Battery" unit="kWh" value={settings.batteryKwh} min={1} max={30} step={0.5} onChange={(v) => setSettings({ ...settings, batteryKwh: v })} />
-          <NumField label="Daily use" unit="kWh" value={settings.dailyKwh} min={5} max={60} step={1} onChange={(v) => setSettings({ ...settings, dailyKwh: v })} hint="Your monthly bill kWh ÷ 30" />
-          <div className="field">
-            <label htmlFor="tariff">{tr('Tariff')}</label>
-            <select id="tariff" value={tariff.mode} onChange={(e) => setTariff({ mode: e.target.value })}>
-              <option value="tou">{tr('Time-of-use (peak 2pm–10pm weekdays)')}</option>
-              <option value="flat">{tr('Flat rate')}</option>
-            </select>
-          </div>
-          {tariff.mode === 'tou' ? (
-            <>
-              <NumField label="Peak rate" unit="RM/kWh" value={tariff.peakRate} min={0} max={2} step={0.01} onChange={(v) => setTariff({ peakRate: v })} hint="Example value — use your bill" />
-              <NumField label="Off-peak rate" unit="RM/kWh" value={tariff.offPeakRate} min={0} max={2} step={0.01} onChange={(v) => setTariff({ offPeakRate: v })} hint="Example value — use your bill" />
-            </>
-          ) : (
-            <NumField label="Rate" unit="RM/kWh" value={tariff.flatRate} min={0} max={2} step={0.01} onChange={(v) => setTariff({ flatRate: v })} hint="Example value — use your bill" />
-          )}
-        </div>
+    <div className="settings">
+      <NumField label="Solar size" unit="kWp" value={settings.kwp} min={1} max={20} step={0.5} onChange={(v) => setSettings({ ...settings, kwp: v })} />
+      <NumField label="Battery" unit="kWh" value={settings.batteryKwh} min={1} max={30} step={0.5} onChange={(v) => setSettings({ ...settings, batteryKwh: v })} />
+      <NumField label="Daily use" unit="kWh" value={settings.dailyKwh} min={5} max={60} step={1} onChange={(v) => setSettings({ ...settings, dailyKwh: v })} hint="Your monthly bill kWh ÷ 30" />
+      <div className="field">
+        <label htmlFor="tariff">{tr('Tariff')}</label>
+        <select id="tariff" value={tariff.mode} onChange={(e) => setTariff({ mode: e.target.value })}>
+          <option value="tou">{tr('Time-of-use')}</option>
+          <option value="flat">{tr('Flat rate')}</option>
+        </select>
+        <div className="hint">{tr(tariff.mode === 'tou' ? 'Peak 2pm–10pm on weekdays. Weekends are all off-peak.' : 'One price at every hour.')}</div>
       </div>
-    </More>
+      {tariff.mode === 'tou' ? (
+        <>
+          <NumField label="Peak rate" unit="RM/kWh" value={tariff.peakRate} min={0} max={2} step={0.01} onChange={(v) => setTariff({ peakRate: v })} hint="Example value — use your bill" />
+          <NumField label="Off-peak rate" unit="RM/kWh" value={tariff.offPeakRate} min={0} max={2} step={0.01} onChange={(v) => setTariff({ offPeakRate: v })} hint="Example value — use your bill" />
+        </>
+      ) : (
+        <NumField label="Rate" unit="RM/kWh" value={tariff.flatRate} min={0} max={2} step={0.01} onChange={(v) => setTariff({ flatRate: v })} hint="Example value — use your bill" />
+      )}
+    </div>
   );
 }
 

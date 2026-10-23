@@ -8,7 +8,7 @@ import { buildDays, homeFromSettings, dayHomeFor, planForDay, avgRate, isWeekend
 import { useAsync, Loading, DemoBanner, fmtDate } from './common.jsx';
 import PlanCard from './PlanCard.jsx';
 import EvCard from './EvCard.jsx';
-import HomeSettings from './HomeSettings.jsx';
+import { homeSummary } from './HomeSettings.jsx';
 import SolarBudgetCard from './SolarBudgetCard.jsx';
 import TipsCard from './TipsCard.jsx';
 import SolarForecast from './SolarForecast.jsx';
@@ -21,7 +21,7 @@ import { Cloud } from './Dashboard.jsx';
 // Sky pictures for the three summary cards.
 const SCENE = { 'plan-budget': 'scene-solar', 'plan-battery': 'scene-blue', 'plan-ev': 'scene-lime' };
 
-export default function PlannerPage({ place, engine, settings, setSettings }) {
+export default function PlannerPage({ place, engine, settings, setSettings, go }) {
   const today = todayMY();
   const [selected, setSelected] = useState(today);
   useEffect(() => setSelected(today), [place.lat, place.lon, today]);
@@ -127,7 +127,14 @@ export default function PlannerPage({ place, engine, settings, setSettings }) {
               </li>
             ))}
           </ul>
-          <HomeSettings settings={settings} setSettings={setSettings} />
+          <button className="sp-home" onClick={() => go?.('settings')}>
+            <span aria-hidden="true">⚙</span>
+            <span>
+              <b>{tr('Your home')}</b>
+              <small>{homeSummary(settings)}</small>
+            </span>
+            <span className="sp-home-go" aria-hidden="true">→</span>
+          </button>
         </aside>
       </div>
     </>

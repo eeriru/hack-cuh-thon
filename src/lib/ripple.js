@@ -1,6 +1,6 @@
 // A soft ripple where you tap or click a button, card or chip. One listener for the
 // whole app; it skips everything when the visitor prefers reduced motion.
-const TARGETS = '.btn, .welcome-tile, .chip, .sp-day, .day-pill, .plan-scene, .side-nav a, .lang-switch button, .mode-btns button, .aq-bar, .mini-chip.solar, .linkish, .search-results button, .more summary';
+const TARGETS = '.btn, .sp-home, .welcome-tile, .chip, .sp-day, .day-pill, .plan-scene, .side-nav a, .lang-switch button, .mode-btns button, .aq-bar, .mini-chip.solar, .linkish, .search-results button, .more summary';
 
 export function installRipple() {
   if (typeof window === 'undefined' || window.__ripple) return;

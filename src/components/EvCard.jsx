@@ -179,6 +179,11 @@ export default function EvCard({ spareSolar, settings, setSettings, home }) {
               <div className="k">{tr('Cost per 100 km')}</div>
               <div className="s">{tr('Petrol car ≈ RM 14')}</div>
             </div>
+            <div>
+              <div className="v" style={{ color: 'var(--ink)' }}>RM {(m.costRm * 30).toFixed(0)}</div>
+              <div className="k">{tr('Charging a month')}</div>
+              <div className="s">{tr('{kwh} kWh a month', { kwh: (p.needKwh * 30).toFixed(0) })}</div>
+            </div>
             {p.co2SavedKg >= 0.05 && (
               <div>
                 <div className="v">{p.co2SavedKg.toFixed(1)} kg</div>
