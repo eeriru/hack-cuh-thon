@@ -33,6 +33,7 @@ const WX_HOURLY = [
   'apparent_temperature',
   'uv_index',
   'wind_gusts_10m',
+  'wind_direction_10m',
 ];
 const WX_CURRENT = [
   'temperature_2m',
@@ -134,6 +135,7 @@ const WX_MAP = {
   apparent_temperature: 'feels',
   uv_index: 'uv',
   wind_gusts_10m: 'gust',
+  wind_direction_10m: 'windDir',
 };
 
 function zipDaily(json) {

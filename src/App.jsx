@@ -126,7 +126,7 @@ export default function App() {
             )}
           </header>
           {(tab === 'air' || tab === 'forecast') && <Welcome go={go} />}
-          {tab === 'air' && <AirQualityPage place={place} engine={engine} go={go} />}
+          {tab === 'air' && <AirQualityPage place={place} />}
           {tab === 'forecast' && <ForecastPage place={place} engine={engine} settings={settings} go={go} />}
           {tab === 'planner' && <PlannerPage place={place} engine={engine} settings={settings} setSettings={setSettings} />}
           {tab === 'method' && <MethodPage engine={engine} />}
